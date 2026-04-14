@@ -1,5 +1,5 @@
 [package]
-name = "github-identity"
+name = "zolvency-registry"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
@@ -10,7 +10,6 @@ crate-type = ["cdylib"]
 
 [dependencies]
 soroban-sdk = "22.0.1"
-itoa = "1.0"
 
 [dev-dependencies]
 soroban-sdk = { version = "22.0.1", features = ["testutils"] }

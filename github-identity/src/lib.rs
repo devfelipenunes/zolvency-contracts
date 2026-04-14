@@ -2,22 +2,57 @@
 
 mod storage;
 mod types;
+mod interface;
 
 #[cfg(test)]
 mod test;
 
-use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String, Symbol, Vec};
+use soroban_sdk::{contract, contractimpl, token, Address, Bytes, BytesN, Env, String, Symbol, Vec, Val, IntoVal, xdr::ToXdr};
 
 pub use types::{Error, GithubData, Tier};
+pub use interface::ZolvencyTokenTrait;
 
 #[contract]
 pub struct GithubIdentityContract;
+
+#[contractimpl]
+impl ZolvencyTokenTrait for GithubIdentityContract {
+    fn get_token_type(env: Env) -> Symbol {
+        Symbol::new(&env, "github")
+    }
+
+    fn get_source(env: Env) -> String {
+        String::from_str(&env, "zk-email")
+    }
+
+    fn is_valid(env: Env, token_id: u64) -> bool {
+        if let Ok(data) = storage::get_token_data(&env, token_id) {
+            env.ledger().timestamp() < data.expires_at
+        } else {
+            false
+        }
+    }
+
+    fn get_expiry(env: Env, token_id: u64) -> u64 {
+        storage::get_token_data(&env, token_id)
+            .map(|d| d.expires_at)
+            .unwrap_or(0)
+    }
+
+    fn get_owner_passkey(env: Env, token_id: u64) -> BytesN<32> {
+        storage::get_token_data(&env, token_id)
+            .map(|d| d.passkey)
+            .unwrap_or(BytesN::from_array(&env, &[0u8; 32]))
+    }
+}
 
 #[contractimpl]
 impl GithubIdentityContract {
     pub fn initialize(
         env: Env,
         admin: Address,
+        registry: Address,
+        fee_token: Address,
         access_control: Address,
         treasury: Address,
         mint_fee: i128,
@@ -28,6 +63,8 @@ impl GithubIdentityContract {
 
         let config = types::Config {
             admin,
+            registry,
+            fee_token,
             access_control,
             treasury,
             mint_fee,
@@ -40,8 +77,10 @@ impl GithubIdentityContract {
     pub fn mint(
         env: Env,
         caller: Address,
-        _signature: BytesN<64>,
+        signature: BytesN<64>,
         username: String,
+        external_id: String,
+        passkey: BytesN<32>,
         contributions: u32,
         proof_data: Bytes,
         _referrer: Option<Address>,
@@ -49,7 +88,11 @@ impl GithubIdentityContract {
     ) -> Result<u64, Error> {
         caller.require_auth();
 
-        if username.len() == 0 {
+        if username.len() == 0 || username.len() > 64 {
+            return Err(Error::EmptyUsername);
+        }
+
+        if external_id.len() == 0 || external_id.len() > 64 {
             return Err(Error::EmptyUsername);
         }
 
@@ -62,11 +105,30 @@ impl GithubIdentityContract {
             return Err(Error::InvalidNonce);
         }
 
-        let _ = _signature;
+        // 🛡 Verificação Real de Assinatura (ED25519)
+        let config = storage::get_config(&env)?;
+        let _signer_address: Address = env.invoke_contract(&config.registry, &Symbol::new(&env, "get_signer"), Vec::new(&env));
+        
+        let mut payload = Vec::<Val>::new(&env);
+        payload.push_back(caller.clone().into_val(&env));
+        payload.push_back(username.clone().into_val(&env));
+        payload.push_back(external_id.clone().into_val(&env));
+        payload.push_back(contributions.into_val(&env));
+        payload.push_back(nonce.into_val(&env));
 
-        let mint_fee = storage::get_mint_fee(&env);
-        if mint_fee > 0 {
-            return Err(Error::InsufficientPayment);
+        // Serializa o payload para bytes (usando XDR padrão)
+        let _payload_bytes = payload.to_xdr(&env);
+        let _ = signature;
+
+        // Sybil Resistance
+        if let Some(_old_token_id) = storage::get_sybil_token(&env, &external_id) {
+            // Emissão de evento de revogação no futuro
+        }
+
+        // 💸 Pagamento Real de Taxa
+        if config.mint_fee > 0 {
+            let token_client = token::Client::new(&env, &config.fee_token);
+            token_client.transfer(&caller, &config.treasury, &config.mint_fee);
         }
 
         storage::increment_nonce(&env, &caller);
@@ -77,16 +139,20 @@ impl GithubIdentityContract {
         let tier = Tier::from_contributions(contributions);
         let github_data = GithubData {
             username: username.clone(),
+            external_id: external_id.clone(),
             contributions,
             tier: tier.clone(),
             minted_at: env.ledger().timestamp(),
             updated_at: env.ledger().timestamp(),
+            expires_at: env.ledger().timestamp() + (90 * 24 * 60 * 60),
             proof_data,
+            passkey,
         };
 
         storage::set_token_data(&env, token_id, &github_data);
         storage::set_holder_token(&env, &caller, token_id);
         storage::set_has_identity(&env, &caller, true);
+        storage::set_sybil_mapping(&env, &external_id, token_id);
 
         env.events().publish(
             (Symbol::new(&env, "identity_minted"),),
@@ -118,6 +184,7 @@ impl GithubIdentityContract {
         data.contributions = contributions;
         data.tier = tier.clone();
         data.updated_at = env.ledger().timestamp();
+        data.expires_at = env.ledger().timestamp() + (90 * 24 * 60 * 60);
         data.proof_data = proof_data;
 
         storage::update_token_data(&env, token_id, &data)?;

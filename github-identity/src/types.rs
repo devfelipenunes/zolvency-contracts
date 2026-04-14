@@ -1,4 +1,4 @@
-use soroban_sdk::{contracttype, contracterror, Bytes, Env, String};
+use soroban_sdk::{contracttype, contracterror, Bytes, Env, String, BytesN};
 
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
@@ -18,17 +18,21 @@ pub enum Error {
     AccessControlError = 12,
     Unauthorized = 13,
     AlreadyInitialized = 14,
+    SybilConflict = 15,
 }
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct GithubData {
     pub username: String,
+    pub external_id: String, // ex: hash do username ou id do github
     pub contributions: u32,
     pub tier: Tier,
     pub minted_at: u64,
     pub updated_at: u64,
+    pub expires_at: u64, // Business TTL
     pub proof_data: Bytes,
+    pub passkey: BytesN<32>, // Binding obrigatório secp256r1
 }
 
 #[contracttype]
@@ -87,6 +91,8 @@ impl Tier {
 #[derive(Clone)]
 pub struct Config {
     pub admin: soroban_sdk::Address,
+    pub registry: soroban_sdk::Address,
+    pub fee_token: soroban_sdk::Address, // Novo: token usado para pagamento (ex: XLM)
     pub access_control: soroban_sdk::Address,
     pub treasury: soroban_sdk::Address,
     pub mint_fee: i128,

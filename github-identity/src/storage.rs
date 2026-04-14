@@ -5,17 +5,74 @@ use crate::types::{Config, Error, GithubData};
 const KEY_CONFIG: &str = "CONFIG";
 const KEY_TOKEN_COUNTER: &str = "TOKEN_CTR";
 
-const THIRTY_DAYS_IN_LEDGERS: u32 = 518_400;
+const DAY_IN_LEDGERS: u32 = 17_280; // ~5s per ledger
+const THIRTY_DAYS: u32 = 30 * DAY_IN_LEDGERS;
+const ONE_YEAR: u32 = 365 * DAY_IN_LEDGERS;
 
 pub fn set_config(env: &Env, config: &Config) {
-    env.storage().persistent().set(&KEY_CONFIG, config);
+    let key = &KEY_CONFIG;
+    env.storage().persistent().set(key, config);
+    env.storage().persistent().extend_ttl(key, ONE_YEAR, ONE_YEAR);
 }
 
 pub fn get_config(env: &Env) -> Result<Config, Error> {
-    env.storage()
-        .persistent()
-        .get(&KEY_CONFIG)
-        .ok_or(Error::NotInitialized)
+    let key = &KEY_CONFIG;
+    let config: Option<Config> = env.storage().persistent().get(key);
+    if let Some(c) = config {
+        env.storage().persistent().extend_ttl(key, ONE_YEAR, ONE_YEAR);
+        Ok(c)
+    } else {
+        Err(Error::NotInitialized)
+    }
+}
+
+pub fn set_token_data(env: &Env, token_id: u64, data: &GithubData) {
+    let key = (Symbol::new(env, "TOK"), token_id);
+    env.storage().persistent().set(&key, data);
+    env.storage().persistent().extend_ttl(&key, ONE_YEAR, ONE_YEAR);
+}
+
+pub fn get_token_data(env: &Env, token_id: u64) -> Result<GithubData, Error> {
+    let key = (Symbol::new(env, "TOK"), token_id);
+    let data: Option<GithubData> = env.storage().persistent().get(&key);
+    if let Some(d) = data {
+        env.storage().persistent().extend_ttl(&key, ONE_YEAR, ONE_YEAR);
+        Ok(d)
+    } else {
+        Err(Error::TokenNotFound)
+    }
+}
+
+pub fn set_holder_token(env: &Env, holder: &Address, token_id: u64) {
+    let key = (Symbol::new(env, "HLD"), holder.clone());
+    env.storage().persistent().set(&key, &token_id);
+    env.storage().persistent().extend_ttl(&key, ONE_YEAR, ONE_YEAR);
+}
+
+pub fn get_holder_token(env: &Env, holder: &Address) -> Result<u64, Error> {
+    let key = (Symbol::new(env, "HLD"), holder.clone());
+    let token_id: Option<u64> = env.storage().persistent().get(&key);
+    if let Some(id) = token_id {
+        env.storage().persistent().extend_ttl(&key, ONE_YEAR, ONE_YEAR);
+        Ok(id)
+    } else {
+        Err(Error::NoIdentityFound)
+    }
+}
+
+pub fn set_sybil_mapping(env: &Env, external_id: &soroban_sdk::String, token_id: u64) {
+    let key = (Symbol::new(env, "SYB"), external_id.clone());
+    env.storage().persistent().set(&key, &token_id);
+    env.storage().persistent().extend_ttl(&key, ONE_YEAR, ONE_YEAR);
+}
+
+pub fn get_sybil_token(env: &Env, external_id: &soroban_sdk::String) -> Option<u64> {
+    let key = (Symbol::new(env, "SYB"), external_id.clone());
+    let token_id: Option<u64> = env.storage().persistent().get(&key);
+    if token_id.is_some() {
+        env.storage().persistent().extend_ttl(&key, ONE_YEAR, ONE_YEAR);
+    }
+    token_id
 }
 
 pub fn get_admin(env: &Env) -> Result<Address, Error> {
@@ -43,22 +100,9 @@ pub fn get_next_token_id(env: &Env) -> u64 {
 
 pub fn increment_token_counter(env: &Env) {
     let current = get_next_token_id(env);
-    env.storage()
-        .persistent()
-        .set(&KEY_TOKEN_COUNTER, &(current + 1));
-}
-
-pub fn set_token_data(env: &Env, token_id: u64, data: &GithubData) {
-    let key = (Symbol::new(env, "TOK"), token_id);
-    env.storage().persistent().set(&key, data);
-}
-
-pub fn get_token_data(env: &Env, token_id: u64) -> Result<GithubData, Error> {
-    let key = (Symbol::new(env, "TOK"), token_id);
-    env.storage()
-        .persistent()
-        .get(&key)
-        .ok_or(Error::TokenNotFound)
+    let key = &KEY_TOKEN_COUNTER;
+    env.storage().persistent().set(key, &(current + 1));
+    env.storage().persistent().extend_ttl(key, ONE_YEAR, ONE_YEAR);
 }
 
 pub fn update_token_data(env: &Env, token_id: u64, data: &GithubData) -> Result<(), Error> {
@@ -67,33 +111,30 @@ pub fn update_token_data(env: &Env, token_id: u64, data: &GithubData) -> Result<
         return Err(Error::TokenNotFound);
     }
     env.storage().persistent().set(&key, data);
+    env.storage().persistent().extend_ttl(&key, ONE_YEAR, ONE_YEAR);
     Ok(())
-}
-
-pub fn set_holder_token(env: &Env, holder: &Address, token_id: u64) {
-    let key = (Symbol::new(env, "HLD"), holder.clone());
-    env.storage().persistent().set(&key, &token_id);
-}
-
-pub fn get_holder_token(env: &Env, holder: &Address) -> Result<u64, Error> {
-    let key = (Symbol::new(env, "HLD"), holder.clone());
-    env.storage()
-        .persistent()
-        .get(&key)
-        .ok_or(Error::NoIdentityFound)
 }
 
 pub fn set_has_identity(env: &Env, holder: &Address, has: bool) {
     let key = (Symbol::new(env, "HAS"), holder.clone());
     env.storage().persistent().set(&key, &has);
+    env.storage().persistent().extend_ttl(&key, ONE_YEAR, ONE_YEAR);
 }
 
 pub fn has_identity(env: &Env, holder: &Address) -> bool {
     let key = (Symbol::new(env, "HAS"), holder.clone());
-    env.storage()
-        .persistent()
-        .get(&key)
-        .unwrap_or(false)
+    let has: Option<bool> = env.storage().persistent().get(&key);
+    if has.is_some() {
+        env.storage().persistent().extend_ttl(&key, ONE_YEAR, ONE_YEAR);
+    }
+    has.unwrap_or(false)
+}
+
+pub fn remove_identity(env: &Env, holder: &Address) {
+    let key_has = (Symbol::new(env, "HAS"), holder.clone());
+    let key_hld = (Symbol::new(env, "HLD"), holder.clone());
+    env.storage().persistent().remove(&key_has);
+    env.storage().persistent().remove(&key_hld);
 }
 
 pub fn get_nonce(env: &Env, user: &Address) -> u64 {
@@ -109,5 +150,5 @@ pub fn increment_nonce(env: &Env, user: &Address) {
         .set(&key, &(current + 1));
     env.storage()
         .temporary()
-        .extend_ttl(&key, THIRTY_DAYS_IN_LEDGERS, THIRTY_DAYS_IN_LEDGERS);
+        .extend_ttl(&key, THIRTY_DAYS, THIRTY_DAYS);
 }

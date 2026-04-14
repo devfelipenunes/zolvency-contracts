@@ -1,0 +1,22 @@
+# Secrets
+.env
+.env.local
+.env.*.local
+
+# Rust/Soroban Build Artifacts
+target/
+**/*.wasm
+
+# OS Specific
+.DS_Store
+Thumbs.db
+
+# VS Code / IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Project Specific
+*.log
+test_snapshots/
