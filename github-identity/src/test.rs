@@ -1,13 +1,48 @@
 #![cfg(test)]
 
 use super::*;
-use soroban_sdk::{testutils::Address as _, testutils::Ledger as _, Address, Bytes, BytesN, Env, String, Symbol};
+use soroban_sdk::{testutils::Address as _, testutils::Ledger as _, testutils::Events as _, Address, Bytes, BytesN, Env, String, Symbol, FromVal};
 
 // Importamos o Registry para mockar nos testes
 mod registry_contract {
     soroban_sdk::contractimport!(
         file = "../zolvency-registry/target/wasm32-unknown-unknown/release/zolvency_registry.wasm"
     );
+}
+
+#[contract]
+pub struct MockAxelarGateway;
+
+#[contractimpl]
+impl MockAxelarGateway {
+    pub fn call_contract(env: Env, destination_chain: String, destination_address: String, payload: Bytes) {
+        env.events().publish(
+            (Symbol::new(&env, "call_contract"),),
+            (destination_chain, destination_address, payload),
+        );
+    }
+}
+
+#[contract]
+pub struct MockAxelarGasService;
+
+#[contractimpl]
+impl MockAxelarGasService {
+    pub fn pay_gas(
+        env: Env,
+        sender: Address,
+        destination_chain: String,
+        destination_address: String,
+        payload_hash: BytesN<32>,
+        gas_token: Address,
+        amount: i128,
+        params: Bytes,
+    ) {
+        env.events().publish(
+            (Symbol::new(&env, "pay_gas"),),
+            (sender, destination_chain, destination_address, payload_hash, gas_token, amount, params),
+        );
+    }
 }
 
 struct TestEnv {
@@ -63,17 +98,20 @@ fn stub_passkey(env: &Env) -> BytesN<32> {
 }
 
 fn mint_for(ctx: &TestEnv, user: &Address, username: &str, contributions: u32) -> u64 {
-    let external_id = String::from_str(&ctx.env, username);
+    let params = MintParams {
+        username: String::from_str(&ctx.env, username),
+        external_id: String::from_str(&ctx.env, username),
+        passkey: stub_passkey(&ctx.env),
+        contributions,
+        proof_data: Bytes::new(&ctx.env),
+        nonce: ctx.client.get_nonce(user),
+    };
     ctx.client.mint(
         user,
         &stub_signature(&ctx.env),
-        &String::from_str(&ctx.env, username),
-        &external_id,
-        &stub_passkey(&ctx.env),
-        &contributions,
-        &Bytes::new(&ctx.env),
+        &params,
         &None,
-        &ctx.client.get_nonce(user),
+        &None,
     )
 }
 
@@ -113,16 +151,21 @@ fn test_mint_with_passkey_and_expiry() {
     let user = Address::generate(&ctx.env);
     let passkey = stub_passkey(&ctx.env);
     
+    let params = MintParams {
+        username: String::from_str(&ctx.env, "user"),
+        external_id: String::from_str(&ctx.env, "ext_id"),
+        passkey: passkey.clone(),
+        contributions: 500,
+        proof_data: Bytes::new(&ctx.env),
+        nonce: 0,
+    };
+
     let token_id = ctx.client.mint(
         &user,
         &stub_signature(&ctx.env),
-        &String::from_str(&ctx.env, "user"),
-        &String::from_str(&ctx.env, "ext_id"),
-        &passkey,
-        &500u32,
-        &Bytes::new(&ctx.env),
+        &params,
         &None,
-        &0u64,
+        &None,
     );
 
     assert_eq!(ctx.client.get_owner_passkey(&token_id), passkey);
@@ -135,31 +178,41 @@ fn test_sybil_resistance_mapping() {
     let user_a = Address::generate(&ctx.env);
     let external_id = String::from_str(&ctx.env, "github_123");
 
+    let params_a = MintParams {
+        username: String::from_str(&ctx.env, "alice"),
+        external_id: external_id.clone(),
+        passkey: stub_passkey(&ctx.env),
+        contributions: 100,
+        proof_data: Bytes::new(&ctx.env),
+        nonce: 0,
+    };
+
     let token_id = ctx.client.mint(
         &user_a,
         &stub_signature(&ctx.env),
-        &String::from_str(&ctx.env, "alice"),
-        &external_id,
-        &stub_passkey(&ctx.env),
-        &100u32,
-        &Bytes::new(&ctx.env),
+        &params_a,
         &None,
-        &0u64,
+        &None,
     );
 
     assert_eq!(token_id, 1);
 
     let user_b = Address::generate(&ctx.env);
+    let params_b = MintParams {
+        username: String::from_str(&ctx.env, "bob"),
+        external_id: external_id.clone(),
+        passkey: stub_passkey(&ctx.env),
+        contributions: 200,
+        proof_data: Bytes::new(&ctx.env),
+        nonce: 0,
+    };
+
     let token_id_2 = ctx.client.mint(
         &user_b,
         &stub_signature(&ctx.env),
-        &String::from_str(&ctx.env, "bob"),
-        &external_id,
-        &stub_passkey(&ctx.env),
-        &200u32,
-        &Bytes::new(&ctx.env),
+        &params_b,
         &None,
-        &0u64,
+        &None,
     );
 
     assert_eq!(token_id_2, 2);
@@ -208,6 +261,7 @@ fn test_update_token_refreshes_expiry() {
         &String::from_str(&ctx.env, "user1"),
         &2000u32,
         &Bytes::new(&ctx.env),
+        &None,
     );
 
     let new_expiry = ctx.client.get_expiry(&token_id);
@@ -234,4 +288,56 @@ fn test_admin_functions() {
     let ctx = setup();
     ctx.client.set_mint_fee(&ctx.admin, &100i128);
     assert_eq!(ctx.client.get_mint_fee(), 100i128);
+}
+
+#[test]
+fn test_cross_chain_push() {
+    let ctx = setup();
+    let user = Address::generate(&ctx.env);
+
+    // 1. Setup Mock Axelar
+    let gateway_id = ctx.env.register(MockAxelarGateway, ());
+    let gas_service_id = ctx.env.register(MockAxelarGasService, ());
+    let gas_token = Address::generate(&ctx.env);
+
+    // 2. Configure Axelar in GithubIdentity
+    ctx.client.set_axelar_config(&ctx.admin, &gateway_id, &gas_service_id, &gas_token);
+
+    // 3. Mint with CrossChainParams
+    let params = MintParams {
+        username: String::from_str(&ctx.env, "felipenunes"),
+        external_id: String::from_str(&ctx.env, "felipenunes"),
+        passkey: stub_passkey(&ctx.env),
+        contributions: 1500, // Architect tier (3)
+        proof_data: Bytes::new(&ctx.env),
+        nonce: 0,
+    };
+
+    let cc_params = CrossChainParams {
+        destination_chain: String::from_str(&ctx.env, "ethereum"),
+        destination_address: String::from_str(&ctx.env, "0x123"),
+        user_destination_address: Bytes::from_array(&ctx.env, &[0u8; 20]),
+    };
+
+    ctx.client.mint(
+        &user,
+        &stub_signature(&ctx.env),
+        &params,
+        &None,
+        &Some(cc_params),
+    );
+
+    // 4. Verify Events (Mocking receipts)
+    let events = ctx.env.events().all();
+    
+    // Should have pay_gas and call_contract events
+    let has_gas_event = events.iter().any(|e| {
+        e.1.get(0).map(|v| Symbol::from_val(&ctx.env, &v) == Symbol::new(&ctx.env, "pay_gas")).unwrap_or(false)
+    });
+    let has_call_event = events.iter().any(|e| {
+        e.1.get(0).map(|v| Symbol::from_val(&ctx.env, &v) == Symbol::new(&ctx.env, "call_contract")).unwrap_or(false)
+    });
+
+    assert!(has_gas_event, "Missing pay_gas event");
+    assert!(has_call_event, "Missing call_contract event");
 }
