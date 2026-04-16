@@ -1,4 +1,4 @@
-use soroban_sdk::{contracttype, contracterror, Bytes, Env, String, BytesN};
+use soroban_sdk::{contracttype, contracterror, Address, Bytes, Env, String, BytesN};
 
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
@@ -19,6 +19,20 @@ pub enum Error {
     Unauthorized = 13,
     AlreadyInitialized = 14,
     SybilConflict = 15,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum DataKey {
+    AxelarConfig,
+}
+
+#[contracttype]
+#[derive(Clone, Debug)]
+pub struct AxelarConfig {
+    pub gateway: Address,
+    pub gas_service: Address,
+    pub gas_token: Address,
 }
 
 #[contracttype]

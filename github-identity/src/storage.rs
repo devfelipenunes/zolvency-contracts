@@ -1,6 +1,6 @@
 use soroban_sdk::{Address, Env, Symbol};
 
-use crate::types::{Config, Error, GithubData};
+use crate::types::{Config, Error, GithubData, AxelarConfig, DataKey};
 
 const KEY_CONFIG: &str = "CONFIG";
 const KEY_TOKEN_COUNTER: &str = "TOKEN_CTR";
@@ -24,6 +24,14 @@ pub fn get_config(env: &Env) -> Result<Config, Error> {
     } else {
         Err(Error::NotInitialized)
     }
+}
+
+pub fn get_axelar_config(env: &Env) -> Result<AxelarConfig, Error> {
+    env.storage().instance().get(&DataKey::AxelarConfig).ok_or(Error::NotInitialized)
+}
+
+pub fn set_axelar_config(env: &Env, config: &AxelarConfig) {
+    env.storage().instance().set(&DataKey::AxelarConfig, config);
 }
 
 pub fn set_token_data(env: &Env, token_id: u64, data: &GithubData) {
