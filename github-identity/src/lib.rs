@@ -10,7 +10,7 @@ mod test;
 
 use soroban_sdk::{contract, contractimpl, token, Address, Bytes, BytesN, Env, String, Symbol, Vec, Val, IntoVal, xdr::ToXdr};
 
-pub use types::{Error, GithubData, Tier};
+pub use types::{Error, GithubData, Tier, MintParams, CrossChainParams};
 pub use interface::ZolvencyTokenTrait;
 
 #[contract]
@@ -79,21 +79,17 @@ impl GithubIdentityContract {
         env: Env,
         caller: Address,
         signature: BytesN<64>,
-        username: String,
-        external_id: String,
-        passkey: BytesN<32>,
-        contributions: u32,
-        proof_data: Bytes,
+        params: MintParams,
         _referrer: Option<Address>,
-        nonce: u64,
+        cross_chain: Option<CrossChainParams>,
     ) -> Result<u64, Error> {
         caller.require_auth();
 
-        if username.len() == 0 || username.len() > 64 {
+        if params.username.len() == 0 || params.username.len() > 64 {
             return Err(Error::EmptyUsername);
         }
 
-        if external_id.len() == 0 || external_id.len() > 64 {
+        if params.external_id.len() == 0 || params.external_id.len() > 64 {
             return Err(Error::EmptyUsername);
         }
 
@@ -102,7 +98,7 @@ impl GithubIdentityContract {
         }
 
         let expected_nonce = storage::get_nonce(&env, &caller);
-        if nonce != expected_nonce {
+        if params.nonce != expected_nonce {
             return Err(Error::InvalidNonce);
         }
 
@@ -110,19 +106,19 @@ impl GithubIdentityContract {
         let config = storage::get_config(&env)?;
         let _signer_address: Address = env.invoke_contract(&config.registry, &Symbol::new(&env, "get_signer"), Vec::new(&env));
         
-        let mut payload = Vec::<Val>::new(&env);
-        payload.push_back(caller.clone().into_val(&env));
-        payload.push_back(username.clone().into_val(&env));
-        payload.push_back(external_id.clone().into_val(&env));
-        payload.push_back(contributions.into_val(&env));
-        payload.push_back(nonce.into_val(&env));
+        let mut payload_vec = Vec::<Val>::new(&env);
+        payload_vec.push_back(caller.clone().into_val(&env));
+        payload_vec.push_back(params.username.clone().into_val(&env));
+        payload_vec.push_back(params.external_id.clone().into_val(&env));
+        payload_vec.push_back(params.contributions.into_val(&env));
+        payload_vec.push_back(params.nonce.into_val(&env));
 
         // Serializa o payload para bytes (usando XDR padrão)
-        let _payload_bytes = payload.to_xdr(&env);
+        let _payload_bytes = payload_vec.to_xdr(&env);
         let _ = signature;
 
         // Sybil Resistance
-        if let Some(_old_token_id) = storage::get_sybil_token(&env, &external_id) {
+        if let Some(_old_token_id) = storage::get_sybil_token(&env, &params.external_id) {
             // Emissão de evento de revogação no futuro
         }
 
@@ -137,27 +133,53 @@ impl GithubIdentityContract {
         let token_id = storage::get_next_token_id(&env);
         storage::increment_token_counter(&env);
 
-        let tier = Tier::from_contributions(contributions);
+        let tier = Tier::from_contributions(params.contributions);
         let github_data = GithubData {
-            username: username.clone(),
-            external_id: external_id.clone(),
-            contributions,
+            username: params.username.clone(),
+            external_id: params.external_id.clone(),
+            contributions: params.contributions,
             tier: tier.clone(),
             minted_at: env.ledger().timestamp(),
             updated_at: env.ledger().timestamp(),
             expires_at: env.ledger().timestamp() + (90 * 24 * 60 * 60),
-            proof_data,
-            passkey,
+            proof_data: params.proof_data,
+            passkey: params.passkey,
         };
 
         storage::set_token_data(&env, token_id, &github_data);
         storage::set_holder_token(&env, &caller, token_id);
         storage::set_has_identity(&env, &caller, true);
-        storage::set_sybil_mapping(&env, &external_id, token_id);
+        storage::set_sybil_mapping(&env, &params.external_id, token_id);
+
+        // 🚀 Axelar Cross-chain Push
+        if let Some(cc) = cross_chain {
+            if cc.destination_chain.len() > 0 && cc.destination_address.len() > 0 {
+                if let Ok(axelar_config) = storage::get_axelar_config(&env) {
+                    let payload = Self::encode_evm_payload(&env, &params.external_id, tier.to_number(), &cc.user_destination_address);
+                    let payload_hash = env.crypto().keccak256(&payload);
+
+                    let axelar_client = axelar::AxelarClient::new(&env, axelar_config.gateway, axelar_config.gas_service);
+                    
+                    // Pagamento de Gás
+                    axelar_client.pay_gas(
+                        caller.clone(),
+                        cc.destination_chain.clone(),
+                        cc.destination_address.clone(),
+                        payload_hash.into(),
+                        axelar_config.gas_token,
+                        1_000_000, // Fixed amount for now
+                        Bytes::new(&env), // Empty params
+                    );
+
+                    // Chamada do Gateway
+                    axelar_client.call_contract(cc.destination_chain, cc.destination_address, payload);
+                }
+            }
+        }
 
         env.events().publish(
             (Symbol::new(&env, "identity_minted"),),
-            (caller, token_id, username, contributions, tier),
+            (caller, token_id, params.username, params.contributions, tier),
         );
 
         Ok(token_id)
@@ -170,6 +192,7 @@ impl GithubIdentityContract {
         username: String,
         contributions: u32,
         proof_data: Bytes,
+        cross_chain: Option<CrossChainParams>,
     ) -> Result<(), Error> {
         caller.require_auth();
 
@@ -189,6 +212,32 @@ impl GithubIdentityContract {
         data.proof_data = proof_data;
 
         storage::update_token_data(&env, token_id, &data)?;
+
+        // 🚀 Axelar Cross-chain Push
+        if let Some(cc) = cross_chain {
+            if cc.destination_chain.len() > 0 && cc.destination_address.len() > 0 {
+                if let Ok(axelar_config) = storage::get_axelar_config(&env) {
+                    let payload = Self::encode_evm_payload(&env, &data.external_id, tier.to_number(), &cc.user_destination_address);
+                    let payload_hash = env.crypto().keccak256(&payload);
+
+                    let axelar_client = axelar::AxelarClient::new(&env, axelar_config.gateway, axelar_config.gas_service);
+                    
+                    // Pagamento de Gás
+                    axelar_client.pay_gas(
+                        caller.clone(),
+                        cc.destination_chain.clone(),
+                        cc.destination_address.clone(),
+                        payload_hash.into(),
+                        axelar_config.gas_token,
+                        1_000_000, // Fixed amount for now
+                        Bytes::new(&env), // Empty params
+                    );
+
+                    // Chamada do Gateway
+                    axelar_client.call_contract(cc.destination_chain, cc.destination_address, payload);
+                }
+            }
+        }
 
         env.events().publish(
             (Symbol::new(&env, "identity_updated"),),
@@ -270,5 +319,29 @@ impl GithubIdentityContract {
             return Err(Error::NotAdmin);
         }
         Ok(())
+    }
+
+    fn encode_evm_payload(env: &Env, external_id: &String, tier: u8, user: &Bytes) -> Bytes {
+        let mut payload = Bytes::new(env);
+
+        // 1. externalId (bytes32)
+        // Convert String to Bytes using XDR as a way to get unique bytes
+        let external_id_bytes = external_id.clone().to_xdr(env);
+
+        let external_id_hash = env.crypto().keccak256(&external_id_bytes);
+        payload.append(&external_id_hash.into());
+        
+        // 2. tier (uint8) -> padded to 32 bytes (big-endian)
+        let mut tier_bytes = [0u8; 32];
+        tier_bytes[31] = tier;
+        payload.append(&Bytes::from_array(env, &tier_bytes));
+        
+        // 3. user (address) -> 20 bytes padded to 32 bytes (big-endian)
+        let mut user_bytes = [0u8; 32];
+        // assuming user is 20 bytes
+        user.copy_into_slice(&mut user_bytes[12..32]);
+        payload.append(&Bytes::from_array(env, &user_bytes));
+        
+        payload
     }
 }
