@@ -1,6 +1,6 @@
 use soroban_sdk::{Address, Env, Symbol};
 
-use crate::types::{Config, Error, GithubData, AxelarConfig, DataKey, InteropConfig};
+use crate::types::{Config, Error, GithubData, AxelarConfig, LayerZeroConfig, DataKey, InteropConfig};
 
 const KEY_CONFIG: &str = "CONFIG";
 const KEY_TOKEN_COUNTER: &str = "TOKEN_CTR";
@@ -32,6 +32,14 @@ pub fn get_axelar_config(env: &Env) -> Result<AxelarConfig, Error> {
 
 pub fn set_axelar_config(env: &Env, config: &AxelarConfig) {
     env.storage().instance().set(&DataKey::AxelarConfig, config);
+}
+
+pub fn get_layerzero_config(env: &Env) -> Result<LayerZeroConfig, Error> {
+    env.storage().instance().get(&DataKey::LayerZeroConfig).ok_or(Error::NotInitialized)
+}
+
+pub fn set_layerzero_config(env: &Env, config: &LayerZeroConfig) {
+    env.storage().instance().set(&DataKey::LayerZeroConfig, config);
 }
 
 pub fn get_interop_config(env: &Env) -> Result<InteropConfig, Error> {

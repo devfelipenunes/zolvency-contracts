@@ -25,6 +25,7 @@ pub enum Error {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DataKey {
     AxelarConfig,
+    LayerZeroConfig,
     InteropConfig,
 }
 
@@ -49,6 +50,12 @@ pub struct AxelarConfig {
     pub gateway: Address,
     pub gas_service: Address,
     pub gas_token: Address,
+}
+
+#[contracttype]
+#[derive(Clone, Debug)]
+pub struct LayerZeroConfig {
+    pub endpoint: Address,
 }
 
 #[contracttype]

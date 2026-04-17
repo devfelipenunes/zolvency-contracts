@@ -4,16 +4,21 @@ mod storage;
 mod types;
 mod interface;
 mod axelar;
+mod layerzero;
 mod interop;
 mod axelar_adapter;
+mod layerzero_adapter;
 
 #[cfg(test)]
 mod test;
 
 use soroban_sdk::{contract, contractimpl, token, Address, Bytes, BytesN, Env, String, Symbol, Vec, Val, IntoVal, xdr::ToXdr};
 
-pub use types::{Error, GithubData, Tier, MintParams, CrossChainParams, AxelarConfig};
+pub use types::{Error, GithubData, Tier, MintParams, CrossChainParams, AxelarConfig, LayerZeroConfig, InteropProtocol, InteropConfig};
 pub use interface::ZolvencyTokenTrait;
+use interop::MessengerTrait;
+use axelar_adapter::AxelarAdapter;
+use layerzero_adapter::LayerZeroAdapter;
 
 #[contract]
 pub struct GithubIdentityContract;
@@ -153,40 +158,28 @@ impl GithubIdentityContract {
         storage::set_has_identity(&env, &caller, true);
         storage::set_sybil_mapping(&env, &params.external_id, token_id);
 
-        // 🚀 Axelar Cross-chain Push
+        // 🚀 Multi-Protocol Cross-chain Push
         if let Some(cc) = cross_chain {
             if cc.destination_chain.len() > 0 && cc.destination_address.len() > 0 {
-                // Forçar endereços oficiais de 2026 para o teste
-                let gateway_addr = Address::from_string(&String::from_str(&env, "CB2JYOOZPHO43R57TC5PXV22QICKIDC5NKRF62BZG2J6JYFUIQPIAYY3"));
-                let gas_service_addr = Address::from_string(&String::from_str(&env, "CCLZOCGHHC6F6JCZHEUP53LDQHRBPPCNRYXOVFZFS3O63OGRC47CKCGV"));
-                
                 let payload = Self::encode_evm_payload(&env, &params.external_id, tier.to_number(), &cc.user_destination_address);
                 
-                if let Ok(axelar_config) = storage::get_axelar_config(&env) {
-                    let axelar_client = axelar::AxelarClient::new(&env, gateway_addr.clone(), gas_service_addr.clone());
-
-                    // 1. Autorizar o Axelar Gas Service a gastar o token (Obrigatório no Soroban)
-                    let gas_token_client = token::Client::new(&env, &axelar_config.gas_token);
-                    let gas_amount = 15_000_000i128; // 15 XLM
-                    
-                    // No Soroban, o contrato de Gás da Axelar vai tentar dar um 'transfer_from' ou 'transfer' 
-                    // usando a autorização do caller.
-                    
-                    // 2. Pagamento de Gás (Versão Amplifier 2026)
-                    axelar_client.pay_gas(
-                        caller.clone(),
-                        cc.destination_chain.clone(),
-                        cc.destination_address.clone(),
-                        payload.clone(),
-                        caller.clone(), // Spender
-                        axelar_config.gas_token,
-                        gas_amount,
-                    );
-
-                    // 3. Chamada do Gateway
-                    axelar_client.call_contract(caller.clone(), cc.destination_chain, cc.destination_address, payload);
+                if let Ok(interop_config) = storage::get_interop_config(&env) {
+                    match interop_config.active_protocol {
+                        InteropProtocol::Axelar => {
+                            AxelarAdapter::send_reputation(
+                                env.clone(),
+                                caller.clone(),
+                                cc.destination_chain,
+                                cc.destination_address,
+                                payload,
+                            )?;
+                        },
+                        InteropProtocol::LayerZero => {
+                            // Task 5 will implement LayerZeroAdapter
+                        },
+                        InteropProtocol::None => {}
+                    }
                 }
-
             }
         }
 
@@ -226,37 +219,28 @@ impl GithubIdentityContract {
 
         storage::update_token_data(&env, token_id, &data)?;
 
-        // 🚀 Axelar Cross-chain Push
+        // 🚀 Multi-Protocol Cross-chain Push
         if let Some(cc) = cross_chain {
             if cc.destination_chain.len() > 0 && cc.destination_address.len() > 0 {
-                // Forçar endereços oficiais de 2026 para o teste
-                let gateway_addr = Address::from_string(&String::from_str(&env, "CB2JYOOZPHO43R57TC5PXV22QICKIDC5NKRF62BZG2J6JYFUIQPIAYY3"));
-                let gas_service_addr = Address::from_string(&String::from_str(&env, "CCLZOCGHHC6F6JCZHEUP53LDQHRBPPCNRYXOVFZFS3O63OGRC47CKCGV"));
-
                 let payload = Self::encode_evm_payload(&env, &data.external_id, tier.to_number(), &cc.user_destination_address);
                 
-                if let Ok(axelar_config) = storage::get_axelar_config(&env) {
-                    let axelar_client = axelar::AxelarClient::new(&env, gateway_addr.clone(), gas_service_addr.clone());
-
-                    // Autorizar o Axelar Gas Service
-                    let _gas_token_client = token::Client::new(&env, &axelar_config.gas_token);
-                    let gas_amount = 15_000_000i128; // 15 XLM
-
-                    // Pagamento de Gás (Versão Amplifier 2026)
-                    axelar_client.pay_gas(
-                        caller.clone(),
-                        cc.destination_chain.clone(),
-                        cc.destination_address.clone(),
-                        payload.clone(),
-                        caller.clone(), // Spender
-                        axelar_config.gas_token,
-                        gas_amount,
-                    );
-
-                    // Chamada do Gateway
-                    axelar_client.call_contract(caller.clone(), cc.destination_chain, cc.destination_address, payload);
+                if let Ok(interop_config) = storage::get_interop_config(&env) {
+                    match interop_config.active_protocol {
+                        InteropProtocol::Axelar => {
+                            AxelarAdapter::send_reputation(
+                                env.clone(),
+                                caller.clone(),
+                                cc.destination_chain,
+                                cc.destination_address,
+                                payload,
+                            )?;
+                        },
+                        InteropProtocol::LayerZero => {
+                            // Task 5 will implement LayerZeroAdapter
+                        },
+                        InteropProtocol::None => {}
+                    }
                 }
-
             }
         }
 
@@ -350,6 +334,38 @@ impl GithubIdentityContract {
             gas_token,
         };
         storage::set_axelar_config(&env, &config);
+        Ok(())
+    }
+
+    pub fn set_layerzero_config(
+        env: Env,
+        admin: Address,
+        endpoint: Address,
+    ) -> Result<(), Error> {
+        admin.require_auth();
+        Self::assert_admin(&env, &admin)?;
+
+        let config = LayerZeroConfig {
+            endpoint,
+        };
+        storage::set_layerzero_config(&env, &config);
+        Ok(())
+    }
+
+    pub fn set_active_protocol(
+        env: Env,
+        admin: Address,
+        protocol: InteropProtocol,
+        adapter: Address,
+    ) -> Result<(), Error> {
+        admin.require_auth();
+        Self::assert_admin(&env, &admin)?;
+
+        let config = InteropConfig {
+            active_protocol: protocol,
+            adapter_address: adapter,
+        };
+        storage::set_interop_config(&env, &config);
         Ok(())
     }
 
