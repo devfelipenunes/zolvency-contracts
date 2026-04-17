@@ -5,6 +5,7 @@ mod types;
 mod interface;
 mod axelar;
 mod interop;
+mod axelar_adapter;
 
 #[cfg(test)]
 mod test;
