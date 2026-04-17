@@ -4,6 +4,7 @@ mod storage;
 mod types;
 mod interface;
 mod axelar;
+mod interop;
 
 #[cfg(test)]
 mod test;
