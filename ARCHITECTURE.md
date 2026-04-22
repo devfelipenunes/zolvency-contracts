@@ -37,18 +37,35 @@ pub trait ZolvencyTokenTrait {
 
 ---
 
-## 3. Implementation Status
-| Component | Status | Verification |
-|-----------|--------|--------------|
-| **Zolvency Registry** | ✅ Functional | Integration tests passing |
-| **GitHub Identity** | ✅ Refactored | v6.0 Interface implemented |
-| **Sybil Resistance** | ✅ Active | Validated via `test_sybil_resistance_mapping` |
-| **Passkey Binding** | ✅ Implemented | Validated via `test_mint_with_passkey_and_expiry` |
-| **Cross-Contract Discovery** | ✅ Functional | Validated via `test_registry_integration_with_github_token` |
+## 3. Modular Interoperability
+The protocol supports cross-chain reputation export via the **Adapter Pattern**.
+
+- **GithubIdentityContract (Spoke)**: Processes and stores reputation on Stellar.
+- **Interoperability Adapters**: Independent contracts that handle the communication with other chains.
+    - `AxelarAdapter`: Uses Axelar GMP for automatic Push updates to EVM.
+    - `AuthorityPullAdapter`: Emits verifiable events for off-chain signatures (Pull model).
+
+### Cross-chain Workflow
+1. User calls `mint` or `update_token` on Stellar.
+2. If `cross_chain` params are provided, Identity calls the active **Adapter**.
+3. Adapter dispatches the message (via Axelar Gateway or Events).
+4. Destination contract (EVM) verifies and updates the user's local status.
 
 ---
 
-## 4. Roadmap
+## 4. Implementation Status
+| Component | Status | Verification |
+|-----------|--------|--------------|
+| **Zolvency Registry** | ✅ Functional | Integration tests passing |
+| **GitHub Identity** | ✅ Modular | v7.0 Modular Interface |
+| **Axelar Adapter** | ✅ Functional | Validated on Sepolia Testnet |
+| **Authority-Pull** | ✅ Implemented | Unit tests passing |
+| **Sybil Resistance** | ✅ Active | Validated via tests |
+| **Passkey Binding** | ✅ Implemented | Validated via tests |
+
+---
+
+## 5. Roadmap
 - **P1-03 (Bank-SBT)**: Implementation of zk-email DKIM circuits for Brazilian banks.
-- **P1-05 (Social Recovery)**: Sovereign recovery flow using bank email DKIM as a root of trust.
 - **RE-01 (Zolvency SDK)**: TypeScript library to consume `get_user_reputation` and provide LTV (Loan-to-Value) multipliers to lending protocols.
+
