@@ -15,10 +15,10 @@ pub struct MockAxelarGateway;
 
 #[contractimpl]
 impl MockAxelarGateway {
-    pub fn call_contract(env: Env, destination_chain: String, destination_address: String, payload: Bytes) {
+    pub fn call_contract(env: Env, caller: Address, destination_chain: String, destination_address: String, payload: Bytes) {
         env.events().publish(
             (Symbol::new(&env, "call_contract"),),
-            (destination_chain, destination_address, payload),
+            (caller, destination_chain, destination_address, payload),
         );
     }
 }
@@ -33,14 +33,14 @@ impl MockAxelarGasService {
         sender: Address,
         destination_chain: String,
         destination_address: String,
-        payload_hash: BytesN<32>,
-        gas_token: Address,
+        payload: Bytes,
+        spender: Address,
+        token: Address,
         amount: i128,
-        params: Bytes,
     ) {
         env.events().publish(
             (Symbol::new(&env, "pay_gas"),),
-            (sender, destination_chain, destination_address, payload_hash, gas_token, amount, params),
+            (sender, destination_chain, destination_address, payload, spender, token, amount),
         );
     }
 }
@@ -290,31 +290,51 @@ fn test_admin_functions() {
     assert_eq!(ctx.client.get_mint_fee(), 100i128);
 }
 
+#[contract]
+pub struct MockAdapter;
+
+#[contractimpl]
+impl MockAdapter {
+    pub fn send(
+        env: Env,
+        _caller: Address,
+        _destination_chain: String,
+        _destination_address: String,
+        _external_id: String,
+        _tier: u32,
+        _user_evm_address: Bytes,
+    ) -> Result<(), crate::types::Error> {
+        env.events().publish(
+            (Symbol::new(&env, "adapter_send"),),
+            (_destination_chain, _destination_address, _external_id, _tier, _user_evm_address),
+        );
+        Ok(())
+    }
+}
+
 #[test]
-fn test_cross_chain_push() {
+fn test_adapter_push() {
     let ctx = setup();
     let user = Address::generate(&ctx.env);
 
-    // 1. Setup Mock Axelar
-    let gateway_id = ctx.env.register(MockAxelarGateway, ());
-    let gas_service_id = ctx.env.register(MockAxelarGasService, ());
-    let gas_token = Address::generate(&ctx.env);
+    // 1. Setup Mock Adapter
+    let adapter_id = ctx.env.register(MockAdapter, ());
 
-    // 2. Configure Axelar in GithubIdentity
-    ctx.client.set_axelar_config(&ctx.admin, &gateway_id, &gas_service_id, &gas_token);
+    // 2. Configure Adapter in GithubIdentity
+    ctx.client.set_active_protocol(&ctx.admin, &InteropProtocol::LayerZero, &adapter_id);
 
     // 3. Mint with CrossChainParams
     let params = MintParams {
         username: String::from_str(&ctx.env, "felipenunes"),
         external_id: String::from_str(&ctx.env, "felipenunes"),
         passkey: stub_passkey(&ctx.env),
-        contributions: 1500, // Architect tier (3)
+        contributions: 1500,
         proof_data: Bytes::new(&ctx.env),
         nonce: 0,
     };
 
     let cc_params = CrossChainParams {
-        destination_chain: String::from_str(&ctx.env, "ethereum"),
+        destination_chain: String::from_str(&ctx.env, "ethereum-sepolia"),
         destination_address: String::from_str(&ctx.env, "0x123"),
         user_destination_address: Bytes::from_array(&ctx.env, &[0u8; 20]),
     };
@@ -327,17 +347,11 @@ fn test_cross_chain_push() {
         &Some(cc_params),
     );
 
-    // 4. Verify Events (Mocking receipts)
+    // 4. Verify Events
     let events = ctx.env.events().all();
-    
-    // Should have pay_gas and call_contract events
-    let has_gas_event = events.iter().any(|e| {
-        e.1.get(0).map(|v| Symbol::from_val(&ctx.env, &v) == Symbol::new(&ctx.env, "pay_gas")).unwrap_or(false)
-    });
-    let has_call_event = events.iter().any(|e| {
-        e.1.get(0).map(|v| Symbol::from_val(&ctx.env, &v) == Symbol::new(&ctx.env, "call_contract")).unwrap_or(false)
+    let has_adapter_event = events.iter().any(|e| {
+        e.1.get(0).map(|v| Symbol::from_val(&ctx.env, &v) == Symbol::new(&ctx.env, "adapter_send")).unwrap_or(false)
     });
 
-    assert!(has_gas_event, "Missing pay_gas event");
-    assert!(has_call_event, "Missing call_contract event");
+    assert!(has_adapter_event, "Missing adapter_send event");
 }

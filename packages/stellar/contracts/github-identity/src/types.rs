@@ -30,21 +30,6 @@ pub enum DataKey {
 }
 
 #[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum InteropProtocol {
-    None,
-    Axelar,
-    LayerZero,
-}
-
-#[contracttype]
-#[derive(Clone, Debug)]
-pub struct InteropConfig {
-    pub active_protocol: InteropProtocol,
-    pub adapter_address: Address,
-}
-
-#[contracttype]
 #[derive(Clone, Debug)]
 pub struct AxelarConfig {
     pub gateway: Address,
@@ -56,6 +41,44 @@ pub struct AxelarConfig {
 #[derive(Clone, Debug)]
 pub struct LayerZeroConfig {
     pub endpoint: Address,
+}
+
+#[contracttype]
+#[derive(Clone, Debug)]
+pub struct AxelarGasToken {
+    pub address: Address,
+    pub amount: i128,
+}
+
+#[contracttype]
+#[derive(Clone, Debug)]
+pub struct MessagingFee {
+    pub native_fee: i128,
+    pub lz_token_fee: i128,
+}
+
+#[contracttype]
+#[derive(Clone, Debug)]
+pub struct MessagingReceipt {
+    pub guid: BytesN<32>,
+    pub nonce: u64,
+    pub fee: MessagingFee,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum InteropProtocol {
+    None,
+    Axelar,
+    LayerZero,
+    Wormhole,
+}
+
+#[contracttype]
+#[derive(Clone, Debug)]
+pub struct InteropConfig {
+    pub active_protocol: InteropProtocol,
+    pub adapter_address: Address,
 }
 
 #[contracttype]

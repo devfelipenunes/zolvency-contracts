@@ -26,21 +26,9 @@ pub fn get_config(env: &Env) -> Result<Config, Error> {
     }
 }
 
-pub fn get_axelar_config(env: &Env) -> Result<AxelarConfig, Error> {
-    env.storage().instance().get(&DataKey::AxelarConfig).ok_or(Error::NotInitialized)
-}
 
-pub fn set_axelar_config(env: &Env, config: &AxelarConfig) {
-    env.storage().instance().set(&DataKey::AxelarConfig, config);
-}
 
-pub fn get_layerzero_config(env: &Env) -> Result<LayerZeroConfig, Error> {
-    env.storage().instance().get(&DataKey::LayerZeroConfig).ok_or(Error::NotInitialized)
-}
 
-pub fn set_layerzero_config(env: &Env, config: &LayerZeroConfig) {
-    env.storage().instance().set(&DataKey::LayerZeroConfig, config);
-}
 
 pub fn get_interop_config(env: &Env) -> Result<InteropConfig, Error> {
     env.storage().instance().get(&DataKey::InteropConfig).ok_or(Error::NotInitialized)
@@ -48,6 +36,18 @@ pub fn get_interop_config(env: &Env) -> Result<InteropConfig, Error> {
 
 pub fn set_interop_config(env: &Env, config: &InteropConfig) {
     env.storage().instance().set(&DataKey::InteropConfig, config);
+}
+
+pub fn set_axelar_config(env: &Env, config: &AxelarConfig) {
+    env.storage().instance().set(&DataKey::AxelarConfig, config);
+}
+
+pub fn get_axelar_config(env: &Env) -> Result<AxelarConfig, Error> {
+    env.storage().instance().get(&DataKey::AxelarConfig).ok_or(Error::NotInitialized)
+}
+
+pub fn set_layerzero_config(env: &Env, config: &LayerZeroConfig) {
+    env.storage().instance().set(&DataKey::LayerZeroConfig, config);
 }
 
 pub fn set_token_data(env: &Env, token_id: u64, data: &GithubData) {
@@ -103,13 +103,7 @@ pub fn get_admin(env: &Env) -> Result<Address, Error> {
     Ok(get_config(env)?.admin)
 }
 
-pub fn get_access_control(env: &Env) -> Result<Address, Error> {
-    Ok(get_config(env)?.access_control)
-}
 
-pub fn get_treasury(env: &Env) -> Result<Address, Error> {
-    Ok(get_config(env)?.treasury)
-}
 
 pub fn get_mint_fee(env: &Env) -> i128 {
     get_config(env).map(|c| c.mint_fee).unwrap_or(0)
@@ -154,12 +148,6 @@ pub fn has_identity(env: &Env, holder: &Address) -> bool {
     has.unwrap_or(false)
 }
 
-pub fn remove_identity(env: &Env, holder: &Address) {
-    let key_has = (Symbol::new(env, "HAS"), holder.clone());
-    let key_hld = (Symbol::new(env, "HLD"), holder.clone());
-    env.storage().persistent().remove(&key_has);
-    env.storage().persistent().remove(&key_hld);
-}
 
 pub fn get_nonce(env: &Env, user: &Address) -> u64 {
     let key = (Symbol::new(env, "NON"), user.clone());

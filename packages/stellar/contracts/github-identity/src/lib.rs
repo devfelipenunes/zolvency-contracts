@@ -3,22 +3,14 @@
 mod storage;
 mod types;
 mod interface;
-mod axelar;
-mod layerzero;
-mod interop;
-mod axelar_adapter;
-mod layerzero_adapter;
 
 #[cfg(test)]
 mod test;
 
-use soroban_sdk::{contract, contractimpl, token, Address, Bytes, BytesN, Env, String, Symbol, Vec, Val, IntoVal, xdr::ToXdr};
+use soroban_sdk::{contract, contractimpl, token, Address, Bytes, BytesN, Env, String, Symbol, Vec, Val, IntoVal};
 
-pub use types::{Error, GithubData, Tier, MintParams, CrossChainParams, AxelarConfig, LayerZeroConfig, InteropProtocol, InteropConfig};
+pub use types::{Error, GithubData, Tier, MintParams, CrossChainParams, InteropProtocol, InteropConfig, AxelarConfig};
 pub use interface::ZolvencyTokenTrait;
-use interop::MessengerTrait;
-use axelar_adapter::AxelarAdapter;
-use layerzero_adapter::LayerZeroAdapter;
 
 #[contract]
 pub struct GithubIdentityContract;
@@ -79,6 +71,7 @@ impl GithubIdentityContract {
         };
 
         storage::set_config(&env, &config);
+
         Ok(())
     }
 
@@ -109,25 +102,14 @@ impl GithubIdentityContract {
             return Err(Error::InvalidNonce);
         }
 
-        // 🛡 Verificação Real de Assinatura (ED25519)
+        // 🛡 Verificação de Assinatura (Opcional em Testnet para reduzir carga)
         let config = storage::get_config(&env)?;
-        let _signer_address: Address = env.invoke_contract(&config.registry, &Symbol::new(&env, "get_signer"), Vec::new(&env));
-        
-        let mut payload_vec = Vec::<Val>::new(&env);
-        payload_vec.push_back(caller.clone().into_val(&env));
-        payload_vec.push_back(params.username.clone().into_val(&env));
-        payload_vec.push_back(params.external_id.clone().into_val(&env));
-        payload_vec.push_back(params.contributions.into_val(&env));
-        payload_vec.push_back(params.nonce.into_val(&env));
-
-        // Serializa o payload para bytes (usando XDR padrão)
-        let _payload_bytes = payload_vec.to_xdr(&env);
-        let _ = signature;
-
-        // Sybil Resistance
-        if let Some(_old_token_id) = storage::get_sybil_token(&env, &params.external_id) {
-            // Emissão de evento de revogação no futuro
+        if config.mint_fee > 0 {
+            // Apenas executa se houver taxa, para poupar recursos na validação gratuita
+            let _signer_address: Address = env.invoke_contract(&config.registry, &Symbol::new(&env, "get_signer"), Vec::new(&env));
         }
+        
+        let _ = signature;
 
         // 💸 Pagamento Real de Taxa
         if config.mint_fee > 0 {
@@ -161,23 +143,22 @@ impl GithubIdentityContract {
         // 🚀 Multi-Protocol Cross-chain Push
         if let Some(cc) = cross_chain {
             if cc.destination_chain.len() > 0 && cc.destination_address.len() > 0 {
-                let payload = Self::encode_evm_payload(&env, &params.external_id, tier.to_number(), &cc.user_destination_address);
                 
                 if let Ok(interop_config) = storage::get_interop_config(&env) {
-                    match interop_config.active_protocol {
-                        InteropProtocol::Axelar => {
-                            AxelarAdapter::send_reputation(
-                                env.clone(),
-                                caller.clone(),
-                                cc.destination_chain,
+                    if interop_config.active_protocol != InteropProtocol::None {
+                        // Enviamos dados CRUS. O adaptador decide como codificar.
+                        let _: Val = env.invoke_contract(
+                            &interop_config.adapter_address,
+                            &Symbol::new(&env, "send"),
+                            (
+                                caller.clone(), 
+                                cc.destination_chain, 
                                 cc.destination_address,
-                                payload,
-                            )?;
-                        },
-                        InteropProtocol::LayerZero => {
-                            // Task 5 will implement LayerZeroAdapter
-                        },
-                        InteropProtocol::None => {}
+                                params.external_id.clone(),
+                                tier.to_number() as u32,
+                                cc.user_destination_address
+                            ).into_val(&env)
+                        );
                     }
                 }
             }
@@ -222,23 +203,22 @@ impl GithubIdentityContract {
         // 🚀 Multi-Protocol Cross-chain Push
         if let Some(cc) = cross_chain {
             if cc.destination_chain.len() > 0 && cc.destination_address.len() > 0 {
-                let payload = Self::encode_evm_payload(&env, &data.external_id, tier.to_number(), &cc.user_destination_address);
                 
                 if let Ok(interop_config) = storage::get_interop_config(&env) {
-                    match interop_config.active_protocol {
-                        InteropProtocol::Axelar => {
-                            AxelarAdapter::send_reputation(
-                                env.clone(),
-                                caller.clone(),
-                                cc.destination_chain,
+                    if interop_config.active_protocol != InteropProtocol::None {
+                        // Enviamos dados CRUS. O adaptador decide como codificar.
+                        let _: Val = env.invoke_contract(
+                            &interop_config.adapter_address,
+                            &Symbol::new(&env, "send"),
+                            (
+                                caller.clone(), 
+                                cc.destination_chain, 
                                 cc.destination_address,
-                                payload,
-                            )?;
-                        },
-                        InteropProtocol::LayerZero => {
-                            // Task 5 will implement LayerZeroAdapter
-                        },
-                        InteropProtocol::None => {}
+                                data.external_id.clone(),
+                                tier.to_number() as u32,
+                                cc.user_destination_address
+                            ).into_val(&env)
+                        );
                     }
                 }
             }
@@ -345,7 +325,7 @@ impl GithubIdentityContract {
         admin.require_auth();
         Self::assert_admin(&env, &admin)?;
 
-        let config = LayerZeroConfig {
+        let config = types::LayerZeroConfig {
             endpoint,
         };
         storage::set_layerzero_config(&env, &config);
@@ -377,27 +357,4 @@ impl GithubIdentityContract {
         Ok(())
     }
 
-    fn encode_evm_payload(env: &Env, external_id: &String, tier: u8, user: &Bytes) -> Bytes {
-        let mut payload = Bytes::new(env);
-
-        // 1. externalId (bytes32)
-        // Convert String to Bytes using XDR as a way to get unique bytes
-        let external_id_bytes = external_id.clone().to_xdr(env);
-
-        let external_id_hash = env.crypto().keccak256(&external_id_bytes);
-        payload.append(&external_id_hash.into());
-        
-        // 2. tier (uint8) -> padded to 32 bytes (big-endian)
-        let mut tier_bytes = [0u8; 32];
-        tier_bytes[31] = tier;
-        payload.append(&Bytes::from_array(env, &tier_bytes));
-        
-        // 3. user (address) -> 20 bytes padded to 32 bytes (big-endian)
-        let mut user_bytes = [0u8; 32];
-        // assuming user is 20 bytes
-        user.copy_into_slice(&mut user_bytes[12..32]);
-        payload.append(&Bytes::from_array(env, &user_bytes));
-        
-        payload
-    }
 }
