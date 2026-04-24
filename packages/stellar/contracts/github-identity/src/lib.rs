@@ -14,7 +14,7 @@ use soroban_sdk::{
 pub use interface::ZolvencyTokenTrait;
 pub use types::{
     AxelarConfig, CrossChainParams, Error, GithubData, InteropConfig, InteropProtocol, MintParams,
-    Tier,
+    Tier, TokenMetadata,
 };
 
 #[contract]
@@ -28,6 +28,15 @@ impl ZolvencyTokenTrait for GithubIdentityContract {
 
     fn get_source(env: Env) -> String {
         String::from_str(&env, "zk-email")
+    }
+
+    fn get_metadata(env: Env) -> TokenMetadata {
+        TokenMetadata {
+            name: String::from_str(&env, "Zolvency GitHub Identity"),
+            symbol: String::from_str(&env, "ZOLV-GH"),
+            version: String::from_str(&env, "1.1.0"), // Versão atualizada com Passkey Opcional
+            data_source: String::from_str(&env, "zk-email / github-api"),
+        }
     }
 
     fn is_valid(env: Env, token_id: u64) -> bool {
