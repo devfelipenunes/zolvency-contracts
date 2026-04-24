@@ -14,6 +14,7 @@ A documentação completa do projeto foi organizada para facilitar a manutençã
 - **[PRD - Product Requirements Document](./docs/product/PRD.md)**: Visão, objetivos e roadmap do protocolo.
 
 ### 📚 [Guias e Specs](./docs/)
+- **[Comandos Úteis (Cheatsheet)](./docs/guides/CHEATSHEET.md)**: Guia rápido de Soroban CLI e deploy.
 - **[Guia de Interoperabilidade Axelar](./docs/guides/AXELAR_INTEROP_GUIDE.md)**: Passo a passo para integração com EVM.
 - **[Especificações de Design](./docs/specs/)**: Detalhes técnicos de cada funcionalidade implementada.
 - **[Planos de Implementação](./docs/plans/)**: Histórico de execução das tasks.
