@@ -94,8 +94,8 @@ pub struct CrossChainParams {
 pub struct MintParams {
     pub username: String,
     pub external_id: String,
-    pub passkey: BytesN<65>, // SECP256R1 Public Key (uncompressed: 0x04 + X + Y)
-    pub passkey_signature: BytesN<64>, // Signature verifying ownership during mint
+    pub passkey: Option<BytesN<65>>, // Alterado para Option
+    pub passkey_signature: Option<BytesN<64>>, // Alterado para Option
     pub contributions: u32,
     pub proof_data: Bytes,
     pub nonce: u64,
@@ -112,7 +112,7 @@ pub struct GithubData {
     pub updated_at: u64,
     pub expires_at: u64,
     pub proof_data: Bytes,
-    pub passkey: BytesN<65>,
+    pub passkey: Option<BytesN<65>>, // Alterado para Option
 }
 
 #[contracttype]
