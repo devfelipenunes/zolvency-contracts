@@ -1,7 +1,10 @@
 #![cfg(test)]
 
 use super::*;
-use soroban_sdk::{testutils::Address as _, testutils::Ledger as _, testutils::Events as _, Address, Bytes, BytesN, Env, String, Symbol, FromVal};
+use soroban_sdk::{
+    testutils::Address as _, testutils::Events as _, testutils::Ledger as _, Address, Bytes,
+    BytesN, Env, FromVal, String, Symbol,
+};
 
 // Importamos o Registry para mockar nos testes
 mod registry_contract {
@@ -15,7 +18,13 @@ pub struct MockAxelarGateway;
 
 #[contractimpl]
 impl MockAxelarGateway {
-    pub fn call_contract(env: Env, caller: Address, destination_chain: String, destination_address: String, payload: Bytes) {
+    pub fn call_contract(
+        env: Env,
+        caller: Address,
+        destination_chain: String,
+        destination_address: String,
+        payload: Bytes,
+    ) {
         env.events().publish(
             (Symbol::new(&env, "call_contract"),),
             (caller, destination_chain, destination_address, payload),
@@ -28,6 +37,7 @@ pub struct MockAxelarGasService;
 
 #[contractimpl]
 impl MockAxelarGasService {
+    #[allow(clippy::too_many_arguments)]
     pub fn pay_gas(
         env: Env,
         sender: Address,
@@ -40,7 +50,15 @@ impl MockAxelarGasService {
     ) {
         env.events().publish(
             (Symbol::new(&env, "pay_gas"),),
-            (sender, destination_chain, destination_address, payload, spender, token, amount),
+            (
+                sender,
+                destination_chain,
+                destination_address,
+                payload,
+                spender,
+                token,
+                amount,
+            ),
         );
     }
 }
@@ -62,7 +80,7 @@ fn setup() -> TestEnv {
     // 1. Deploy do Registry (Necessário para o mint funcionar)
     let registry_id = env.register(registry_contract::WASM, ());
     let registry_client = registry_contract::Client::new(&env, &registry_id);
-    
+
     let admin = Address::generate(&env);
     let signer = Address::generate(&env);
     registry_client.initialize(&admin, &signer);
@@ -76,7 +94,14 @@ fn setup() -> TestEnv {
     let access_control = Address::generate(&env);
     let treasury = Address::generate(&env);
 
-    client.initialize(&admin, &registry_id, &fee_token, &access_control, &treasury, &0);
+    client.initialize(
+        &admin,
+        &registry_id,
+        &fee_token,
+        &access_control,
+        &treasury,
+        &0,
+    );
 
     TestEnv {
         env,
@@ -111,13 +136,8 @@ fn mint_for(ctx: &TestEnv, user: &Address, username: &str, contributions: u32) -
         proof_data: Bytes::new(&ctx.env),
         nonce: ctx.client.get_nonce(user),
     };
-    ctx.client.mint(
-        user,
-        &stub_signature(&ctx.env),
-        &params,
-        &None,
-        &None,
-    )
+    ctx.client
+        .mint(user, &stub_signature(&ctx.env), &params, &None, &None)
 }
 
 #[test]
@@ -130,7 +150,14 @@ fn test_initialize_sets_mint_fee() {
     let contract_id = env.register(GithubIdentityContract, ());
     let client = GithubIdentityContractClient::new(&env, &contract_id);
 
-    client.initialize(&ctx.admin, &ctx.registry, &ctx.fee_token, &ctx.access_control, &ctx.treasury, &mint_fee);
+    client.initialize(
+        &ctx.admin,
+        &ctx.registry,
+        &ctx.fee_token,
+        &ctx.access_control,
+        &ctx.treasury,
+        &mint_fee,
+    );
 
     assert_eq!(client.get_mint_fee(), mint_fee);
 }
@@ -139,7 +166,10 @@ fn test_initialize_sets_mint_fee() {
 fn test_trait_implementation() {
     let ctx = setup();
     assert_eq!(ctx.client.get_token_type(), Symbol::new(&ctx.env, "github"));
-    assert_eq!(ctx.client.get_source(), String::from_str(&ctx.env, "zk-email"));
+    assert_eq!(
+        ctx.client.get_source(),
+        String::from_str(&ctx.env, "zk-email")
+    );
 }
 
 #[test]
@@ -155,7 +185,7 @@ fn test_mint_with_passkey_and_expiry() {
     let ctx = setup();
     let user = Address::generate(&ctx.env);
     let passkey = stub_passkey(&ctx.env);
-    
+
     let params = MintParams {
         username: String::from_str(&ctx.env, "user"),
         external_id: String::from_str(&ctx.env, "ext_id"),
@@ -166,13 +196,9 @@ fn test_mint_with_passkey_and_expiry() {
         nonce: 0,
     };
 
-    let token_id = ctx.client.mint(
-        &user,
-        &stub_signature(&ctx.env),
-        &params,
-        &None,
-        &None,
-    );
+    let token_id = ctx
+        .client
+        .mint(&user, &stub_signature(&ctx.env), &params, &None, &None);
 
     assert_eq!(ctx.client.get_owner_passkey(&token_id), passkey);
     assert!(ctx.client.is_valid(&token_id));
@@ -194,7 +220,9 @@ fn test_mint_without_passkey() {
         nonce: 0,
     };
 
-    let token_id = ctx.client.mint(&user, &stub_signature(&ctx.env), &params, &None, &None);
+    let token_id = ctx
+        .client
+        .mint(&user, &stub_signature(&ctx.env), &params, &None, &None);
     assert_eq!(ctx.client.get_owner_passkey(&token_id), None);
 }
 
@@ -214,13 +242,9 @@ fn test_sybil_resistance_mapping() {
         nonce: 0,
     };
 
-    let token_id = ctx.client.mint(
-        &user_a,
-        &stub_signature(&ctx.env),
-        &params_a,
-        &None,
-        &None,
-    );
+    let token_id = ctx
+        .client
+        .mint(&user_a, &stub_signature(&ctx.env), &params_a, &None, &None);
 
     assert_eq!(token_id, 1);
 
@@ -235,13 +259,9 @@ fn test_sybil_resistance_mapping() {
         nonce: 0,
     };
 
-    let token_id_2 = ctx.client.mint(
-        &user_b,
-        &stub_signature(&ctx.env),
-        &params_b,
-        &None,
-        &None,
-    );
+    let token_id_2 = ctx
+        .client
+        .mint(&user_b, &stub_signature(&ctx.env), &params_b, &None, &None);
 
     assert_eq!(token_id_2, 2);
 }
@@ -279,9 +299,11 @@ fn test_update_token_refreshes_expiry() {
     let ctx = setup();
     let user = Address::generate(&ctx.env);
     let token_id = mint_for(&ctx, &user, "user1", 1500);
-    
+
     let initial_expiry = ctx.client.get_expiry(&token_id);
-    ctx.env.ledger().set_timestamp(ctx.env.ledger().timestamp() + 86400);
+    ctx.env
+        .ledger()
+        .set_timestamp(ctx.env.ledger().timestamp() + 86400);
 
     ctx.client.update_token(
         &user,
@@ -308,7 +330,7 @@ fn test_svg_generation() {
     let user = Address::generate(&ctx.env);
     let token_id = mint_for(&ctx, &user, "dev", 1500);
     let svg = ctx.client.get_token_svg(&token_id);
-    assert!(svg.len() > 0);
+    assert!(!svg.is_empty());
 }
 
 #[test]
@@ -334,7 +356,13 @@ impl MockAdapter {
     ) -> Result<(), crate::types::Error> {
         env.events().publish(
             (Symbol::new(&env, "adapter_send"),),
-            (_destination_chain, _destination_address, _external_id, _tier, _user_evm_address),
+            (
+                _destination_chain,
+                _destination_address,
+                _external_id,
+                _tier,
+                _user_evm_address,
+            ),
         );
         Ok(())
     }
@@ -349,7 +377,8 @@ fn test_adapter_push() {
     let adapter_id = ctx.env.register(MockAdapter, ());
 
     // 2. Configure Adapter in GithubIdentity
-    ctx.client.set_active_protocol(&ctx.admin, &InteropProtocol::LayerZero, &adapter_id);
+    ctx.client
+        .set_active_protocol(&ctx.admin, &InteropProtocol::LayerZero, &adapter_id);
 
     // 3. Mint with CrossChainParams
     let params = MintParams {
@@ -379,7 +408,9 @@ fn test_adapter_push() {
     // 4. Verify Events
     let events = ctx.env.events().all();
     let has_adapter_event = events.iter().any(|e| {
-        e.1.get(0).map(|v| Symbol::from_val(&ctx.env, &v) == Symbol::new(&ctx.env, "adapter_send")).unwrap_or(false)
+        e.1.get(0)
+            .map(|v| Symbol::from_val(&ctx.env, &v) == Symbol::new(&ctx.env, "adapter_send"))
+            .unwrap_or(false)
     });
 
     assert!(has_adapter_event, "Missing adapter_send event");

@@ -1,4 +1,4 @@
-use soroban_sdk::{Env, String, Symbol, BytesN};
+use soroban_sdk::{BytesN, Env, String, Symbol};
 
 pub trait ZolvencyTokenTrait {
     /// Retorna o tipo do token (ex: "github", "bank")

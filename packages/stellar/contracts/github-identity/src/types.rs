@@ -1,4 +1,5 @@
-use soroban_sdk::{contracttype, contracterror, Address, Bytes, Env, String, BytesN};
+#![allow(clippy::enum_variant_names)]
+use soroban_sdk::{contracterror, contracttype, Address, Bytes, BytesN, Env, String};
 
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
@@ -23,6 +24,7 @@ pub enum Error {
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[allow(clippy::enum_variant_names)]
 pub enum DataKey {
     AxelarConfig,
     LayerZeroConfig,
@@ -94,7 +96,7 @@ pub struct CrossChainParams {
 pub struct MintParams {
     pub username: String,
     pub external_id: String,
-    pub passkey: Option<BytesN<65>>, // Alterado para Option
+    pub passkey: Option<BytesN<65>>,           // Alterado para Option
     pub passkey_signature: Option<BytesN<64>>, // Alterado para Option
     pub contributions: u32,
     pub proof_data: Bytes,
