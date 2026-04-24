@@ -26,12 +26,12 @@ pub trait ZolvencyTokenTrait {
     fn get_source(env: Env) -> String;         // e.g., "zk-email-dkim"
     fn is_valid(env: Env, token_id: u64) -> bool; // Business TTL check
     fn get_expiry(env: Env, token_id: u64) -> u64; // UNIX Timestamp
-    fn get_owner_passkey(env: Env, token_id: u64) -> BytesN<32>; // Passkey binding
+    fn get_owner_passkey(env: Env, token_id: u64) -> Option<BytesN<65>>; // Optional Passkey binding
 }
 ```
 
 ### Key Innovations
-1.  **Passkey Binding**: Tokens are bound to a WebAuthn/Passkey (secp256r1) rather than just a private key, ensuring hardware-level security.
+1.  **Optional Passkey Binding**: Tokens can be bound to a WebAuthn/Passkey (secp256r1) for hardware-level security. This is optional and provides "Opt-in security".
 2.  **Business TTL**: Tokens have a configurable expiration period (e.g., 90 days for GitHub) to ensure reputation is current.
 3.  **Sybil Resistance**: Each token maps a unique external identifier (e.g., GitHub User ID hash) to a `token_id`. If a user attempts to mint a second token with the same external ID, the protocol invalidates the previous token.
 
@@ -61,7 +61,7 @@ The protocol supports cross-chain reputation export via the **Adapter Pattern**.
 | **Axelar Adapter** | ✅ Functional | Validated on Sepolia Testnet |
 | **Authority-Pull** | ✅ Implemented | Unit tests passing |
 | **Sybil Resistance** | ✅ Active | Validated via tests |
-| **Passkey Binding** | ✅ Implemented | Validated via tests |
+| **Passkey Binding** | ✅ Optional | Opt-in hardware security |
 
 ---
 
