@@ -39,10 +39,10 @@ impl ZolvencyTokenTrait for GithubIdentityContract {
             .unwrap_or(0)
     }
 
-    fn get_owner_passkey(env: Env, token_id: u64) -> BytesN<65> {
+    fn get_owner_passkey(env: Env, token_id: u64) -> Option<BytesN<65>> {
         storage::get_token_data(&env, token_id)
             .map(|d| d.passkey)
-            .unwrap_or(BytesN::from_array(&env, &[0u8; 65]))
+            .unwrap_or(None)
     }
 }
 
@@ -109,8 +109,22 @@ impl GithubIdentityContract {
 
         #[cfg(not(test))]
         {
-            let msg_hash = env.crypto().sha256(&params.external_id.clone().to_xdr(&env));
-            env.crypto().secp256r1_verify(&params.passkey, &msg_hash, &params.passkey_signature);
+            match (params.passkey.clone(), params.passkey_signature.clone()) {
+                (Some(pk), Some(sig)) => {
+                    let mut msg_bytes = [0u8; 64];
+                    let ext_id = params.external_id.clone();
+                    ext_id.copy_into_slice(&mut msg_bytes[..ext_id.len() as usize]);
+                    let msg_hash = env.crypto().sha256(&Bytes::from_slice(&env, &msg_bytes[..ext_id.len() as usize]));
+                    env.crypto().secp256r1_verify(&pk, &msg_hash, &sig);
+                },
+                (None, None) => {
+                    // Pula validação se ambos forem None
+                },
+                _ => {
+                    // Retorna erro se apenas um for fornecido
+                    return Err(Error::InvalidSignature);
+                }
+            }
         }
         
         let _ = signature;
