@@ -1,22 +1,35 @@
+require('dotenv').config();
 const { Contract, Keypair, rpc, Networks, TransactionBuilder, Address, nativeToScVal, scValToNative } = require('@stellar/stellar-sdk');
 
 async function validateAxelar() {
-    const RPC_URL = "https://soroban-testnet.stellar.org";
+    const RPC_URL = process.env.RPC_URL || "https://soroban-testnet.stellar.org";
     const server = new rpc.Server(RPC_URL);
-    const networkPassphrase = Networks.TESTNET;
+    const networkPassphrase = process.env.STELLAR_NETWORK === "mainnet" ? Networks.PUBLIC : Networks.TESTNET;
 
     const adminSecret = process.env.ADMIN_SECRET;
     const deployerSecret = process.env.DEPLOYER_SECRET;
+    
+    if (!adminSecret || !deployerSecret) {
+        throw new Error("ADMIN_SECRET or DEPLOYER_SECRET not set in .env");
+    }
+
     const adminKp = Keypair.fromSecret(adminSecret);
     const deployerKp = Keypair.fromSecret(deployerSecret);
 
-    // Use o ID do contrato que acabamos de deployar ou um fixo
-    const identityId = "CBHNVRA3WT3J3XELBRUIWOWCPKVFXJU3FJTMHPAQ3QIJIVPOS5YE6SK2";
+    // Use o ID do contrato configurado no .env
+    const identityId = process.env.IDENTITY_CONTRACT_ID;
+    if (!identityId) {
+        throw new Error("IDENTITY_CONTRACT_ID not set in .env");
+    }
     
-    // Endereços oficiais Axelar Testnet
-    const AXELAR_GATEWAY = "CCSNWHMQSPTW4PS7L32OIMH7Z6NFNCKYZKNFSWRSYX7MK64KHBDZDT5I";
-    const AXELAR_GAS_SERVICE = "CAZUKAFB5XHZKFZR7B5HIKB6BBMYSZIV3V2VWFTQWKYEMONWK2ZLTZCT";
-    const AXELAR_GAS_TOKEN = "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
+    // Endereços Axelar configurados no .env
+    const AXELAR_GATEWAY = process.env.AXELAR_GATEWAY_STELLAR;
+    const AXELAR_GAS_SERVICE = process.env.AXELAR_GAS_SERVICE_STELLAR;
+    const AXELAR_GAS_TOKEN = process.env.AXELAR_GAS_TOKEN_STELLAR;
+
+    if (!AXELAR_GATEWAY || !AXELAR_GAS_SERVICE || !AXELAR_GAS_TOKEN) {
+        throw new Error("Axelar configuration missing in .env");
+    }
 
     const contract = new Contract(identityId);
 
@@ -78,8 +91,12 @@ async function validateAxelar() {
 
         // 3. Disparar o Mint
         console.log("💎 Minting and Bridging...");
-        const verifierEvm = "0xE71A3A1BB2D407c6f9a037Ef05065D08dc9859";
-        const userEvm = "70997970C51812dc3A010C7d01b50e0d17dc79C8";
+        const verifierEvm = process.env.VERIFIER_CONTRACT_EVM;
+        const userEvm = process.env.USER_EVM_ADDRESS;
+
+        if (!verifierEvm || !userEvm) {
+            throw new Error("VERIFIER_CONTRACT_EVM or USER_EVM_ADDRESS not set in .env");
+        }
 
         const mintParams = {
             username: "final_validator",
