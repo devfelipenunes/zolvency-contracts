@@ -180,6 +180,15 @@ pub struct Config {
     pub mint_fee: i128,
 }
 
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TokenMetadata {
+    pub name: String,
+    pub symbol: String,
+    pub version: String,
+    pub data_source: String,
+}
+
 pub fn generate_svg(env: &Env, data: &GithubData) -> String {
     let svg = match data.tier {
         Tier::Novice => "<svg xmlns='http://www.w3.org/2000/svg' width='350' height='200'><rect width='100%' height='100%' fill='#b0c4de'/><text x='50%' y='100' font-size='24' fill='#181c2f' text-anchor='middle'>Novice</text></svg>",
