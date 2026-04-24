@@ -19,6 +19,9 @@ A documentação completa do projeto foi organizada para facilitar a manutençã
 - **[Especificações de Design](./docs/specs/)**: Detalhes técnicos de cada funcionalidade implementada.
 - **[Planos de Implementação](./docs/plans/)**: Histórico de execução das tasks.
 
+## 🤖 Para Agentes de IA
+Este repositório inclui uma [Skill de Desenvolvimento Interna](./docs/internal/SKILL.md). Ao trabalhar neste projeto, carregue esta skill para garantir adesão aos padrões arquiteturais e de segurança do Zolvency.
+
 ## 🛠️ Como começar
 
 ### Pré-requisitos
