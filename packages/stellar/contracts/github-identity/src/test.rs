@@ -93,12 +93,12 @@ fn stub_signature(env: &Env) -> BytesN<64> {
     BytesN::from_array(env, &[0u8; 64])
 }
 
-fn stub_passkey(env: &Env) -> BytesN<65> {
-    BytesN::from_array(env, &[0x04; 65])
+fn stub_passkey(env: &Env) -> Option<BytesN<65>> {
+    Some(BytesN::from_array(env, &[1u8; 65]))
 }
 
-fn stub_passkey_signature(env: &Env) -> BytesN<64> {
-    BytesN::from_array(env, &[2u8; 64])
+fn stub_passkey_signature(env: &Env) -> Option<BytesN<64>> {
+    Some(BytesN::from_array(env, &[0u8; 64]))
 }
 
 fn mint_for(ctx: &TestEnv, user: &Address, username: &str, contributions: u32) -> u64 {
@@ -176,6 +176,26 @@ fn test_mint_with_passkey_and_expiry() {
 
     assert_eq!(ctx.client.get_owner_passkey(&token_id), passkey);
     assert!(ctx.client.is_valid(&token_id));
+}
+
+#[test]
+fn test_mint_without_passkey() {
+    let ctx = setup();
+    let user = Address::generate(&ctx.env);
+    ctx.env.mock_all_auths();
+
+    let params = MintParams {
+        username: String::from_str(&ctx.env, "no_passkey"),
+        external_id: String::from_str(&ctx.env, "gh_999"),
+        passkey: None,
+        passkey_signature: None,
+        contributions: 100,
+        proof_data: Bytes::new(&ctx.env),
+        nonce: 0,
+    };
+
+    let token_id = ctx.client.mint(&user, &stub_signature(&ctx.env), &params, &None, &None);
+    assert_eq!(ctx.client.get_owner_passkey(&token_id), None);
 }
 
 #[test]
