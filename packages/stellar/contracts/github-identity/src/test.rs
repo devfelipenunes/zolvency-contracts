@@ -93,8 +93,12 @@ fn stub_signature(env: &Env) -> BytesN<64> {
     BytesN::from_array(env, &[0u8; 64])
 }
 
-fn stub_passkey(env: &Env) -> BytesN<32> {
-    BytesN::from_array(env, &[1u8; 32])
+fn stub_passkey(env: &Env) -> BytesN<65> {
+    BytesN::from_array(env, &[0x04; 65])
+}
+
+fn stub_passkey_signature(env: &Env) -> BytesN<64> {
+    BytesN::from_array(env, &[2u8; 64])
 }
 
 fn mint_for(ctx: &TestEnv, user: &Address, username: &str, contributions: u32) -> u64 {
@@ -102,6 +106,7 @@ fn mint_for(ctx: &TestEnv, user: &Address, username: &str, contributions: u32) -
         username: String::from_str(&ctx.env, username),
         external_id: String::from_str(&ctx.env, username),
         passkey: stub_passkey(&ctx.env),
+        passkey_signature: stub_passkey_signature(&ctx.env),
         contributions,
         proof_data: Bytes::new(&ctx.env),
         nonce: ctx.client.get_nonce(user),
@@ -155,6 +160,7 @@ fn test_mint_with_passkey_and_expiry() {
         username: String::from_str(&ctx.env, "user"),
         external_id: String::from_str(&ctx.env, "ext_id"),
         passkey: passkey.clone(),
+        passkey_signature: stub_passkey_signature(&ctx.env),
         contributions: 500,
         proof_data: Bytes::new(&ctx.env),
         nonce: 0,
@@ -182,6 +188,7 @@ fn test_sybil_resistance_mapping() {
         username: String::from_str(&ctx.env, "alice"),
         external_id: external_id.clone(),
         passkey: stub_passkey(&ctx.env),
+        passkey_signature: stub_passkey_signature(&ctx.env),
         contributions: 100,
         proof_data: Bytes::new(&ctx.env),
         nonce: 0,
@@ -202,6 +209,7 @@ fn test_sybil_resistance_mapping() {
         username: String::from_str(&ctx.env, "bob"),
         external_id: external_id.clone(),
         passkey: stub_passkey(&ctx.env),
+        passkey_signature: stub_passkey_signature(&ctx.env),
         contributions: 200,
         proof_data: Bytes::new(&ctx.env),
         nonce: 0,
@@ -328,6 +336,7 @@ fn test_adapter_push() {
         username: String::from_str(&ctx.env, "felipenunes"),
         external_id: String::from_str(&ctx.env, "felipenunes"),
         passkey: stub_passkey(&ctx.env),
+        passkey_signature: stub_passkey_signature(&ctx.env),
         contributions: 1500,
         proof_data: Bytes::new(&ctx.env),
         nonce: 0,

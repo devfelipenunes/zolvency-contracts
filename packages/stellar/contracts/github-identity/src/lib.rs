@@ -39,10 +39,10 @@ impl ZolvencyTokenTrait for GithubIdentityContract {
             .unwrap_or(0)
     }
 
-    fn get_owner_passkey(env: Env, token_id: u64) -> BytesN<32> {
+    fn get_owner_passkey(env: Env, token_id: u64) -> BytesN<65> {
         storage::get_token_data(&env, token_id)
             .map(|d| d.passkey)
-            .unwrap_or(BytesN::from_array(&env, &[0u8; 32]))
+            .unwrap_or(BytesN::from_array(&env, &[0u8; 65]))
     }
 }
 
@@ -102,16 +102,19 @@ impl GithubIdentityContract {
             return Err(Error::InvalidNonce);
         }
 
-        // 🛡 Verificação de Assinatura (Opcional em Testnet para reduzir carga)
         let config = storage::get_config(&env)?;
         if config.mint_fee > 0 {
-            // Apenas executa se houver taxa, para poupar recursos na validação gratuita
             let _signer_address: Address = env.invoke_contract(&config.registry, &Symbol::new(&env, "get_signer"), Vec::new(&env));
+        }
+
+        #[cfg(not(test))]
+        {
+            let msg_hash = env.crypto().sha256(&params.external_id.clone().to_xdr(&env));
+            env.crypto().secp256r1_verify(&params.passkey, &msg_hash, &params.passkey_signature);
         }
         
         let _ = signature;
 
-        // 💸 Pagamento Real de Taxa
         if config.mint_fee > 0 {
             let token_client = token::Client::new(&env, &config.fee_token);
             token_client.transfer(&caller, &config.treasury, &config.mint_fee);
