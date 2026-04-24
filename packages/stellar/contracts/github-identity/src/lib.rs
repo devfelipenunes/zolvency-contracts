@@ -1,16 +1,21 @@
 #![no_std]
 
+mod interface;
 mod storage;
 mod types;
-mod interface;
 
 #[cfg(test)]
 mod test;
 
-use soroban_sdk::{contract, contractimpl, token, Address, Bytes, BytesN, Env, String, Symbol, Vec, Val, IntoVal};
+use soroban_sdk::{
+    contract, contractimpl, token, Address, Bytes, BytesN, Env, IntoVal, String, Symbol, Val, Vec,
+};
 
-pub use types::{Error, GithubData, Tier, MintParams, CrossChainParams, InteropProtocol, InteropConfig, AxelarConfig};
 pub use interface::ZolvencyTokenTrait;
+pub use types::{
+    AxelarConfig, CrossChainParams, Error, GithubData, InteropConfig, InteropProtocol, MintParams,
+    Tier,
+};
 
 #[contract]
 pub struct GithubIdentityContract;
@@ -85,11 +90,11 @@ impl GithubIdentityContract {
     ) -> Result<u64, Error> {
         caller.require_auth();
 
-        if params.username.len() == 0 || params.username.len() > 64 {
+        if params.username.is_empty() || params.username.len() > 64 {
             return Err(Error::EmptyUsername);
         }
 
-        if params.external_id.len() == 0 || params.external_id.len() > 64 {
+        if params.external_id.is_empty() || params.external_id.len() > 64 {
             return Err(Error::EmptyUsername);
         }
 
@@ -104,7 +109,11 @@ impl GithubIdentityContract {
 
         let config = storage::get_config(&env)?;
         if config.mint_fee > 0 {
-            let _signer_address: Address = env.invoke_contract(&config.registry, &Symbol::new(&env, "get_signer"), Vec::new(&env));
+            let _signer_address: Address = env.invoke_contract(
+                &config.registry,
+                &Symbol::new(&env, "get_signer"),
+                Vec::new(&env),
+            );
         }
 
         #[cfg(not(test))]
@@ -114,19 +123,22 @@ impl GithubIdentityContract {
                     let mut msg_bytes = [0u8; 64];
                     let ext_id = params.external_id.clone();
                     ext_id.copy_into_slice(&mut msg_bytes[..ext_id.len() as usize]);
-                    let msg_hash = env.crypto().sha256(&Bytes::from_slice(&env, &msg_bytes[..ext_id.len() as usize]));
+                    let msg_hash = env.crypto().sha256(&Bytes::from_slice(
+                        &env,
+                        &msg_bytes[..ext_id.len() as usize],
+                    ));
                     env.crypto().secp256r1_verify(&pk, &msg_hash, &sig);
-                },
+                }
                 (None, None) => {
                     // Pula validação se ambos forem None
-                },
+                }
                 _ => {
                     // Retorna erro se apenas um for fornecido
                     return Err(Error::InvalidSignature);
                 }
             }
         }
-        
+
         let _ = signature;
 
         if config.mint_fee > 0 {
@@ -159,8 +171,7 @@ impl GithubIdentityContract {
 
         // 🚀 Multi-Protocol Cross-chain Push
         if let Some(cc) = cross_chain {
-            if cc.destination_chain.len() > 0 && cc.destination_address.len() > 0 {
-                
+            if !cc.destination_chain.is_empty() && !cc.destination_address.is_empty() {
                 if let Ok(interop_config) = storage::get_interop_config(&env) {
                     if interop_config.active_protocol != InteropProtocol::None {
                         // Enviamos dados CRUS. O adaptador decide como codificar.
@@ -168,13 +179,14 @@ impl GithubIdentityContract {
                             &interop_config.adapter_address,
                             &Symbol::new(&env, "send"),
                             (
-                                caller.clone(), 
-                                cc.destination_chain, 
+                                caller.clone(),
+                                cc.destination_chain,
                                 cc.destination_address,
                                 params.external_id.clone(),
                                 tier.to_number() as u32,
-                                cc.user_destination_address
-                            ).into_val(&env)
+                                cc.user_destination_address,
+                            )
+                                .into_val(&env),
                         );
                     }
                 }
@@ -183,7 +195,13 @@ impl GithubIdentityContract {
 
         env.events().publish(
             (Symbol::new(&env, "identity_minted"),),
-            (caller, token_id, params.username, params.contributions, tier),
+            (
+                caller,
+                token_id,
+                params.username,
+                params.contributions,
+                tier,
+            ),
         );
 
         Ok(token_id)
@@ -219,8 +237,7 @@ impl GithubIdentityContract {
 
         // 🚀 Multi-Protocol Cross-chain Push
         if let Some(cc) = cross_chain {
-            if cc.destination_chain.len() > 0 && cc.destination_address.len() > 0 {
-                
+            if !cc.destination_chain.is_empty() && !cc.destination_address.is_empty() {
                 if let Ok(interop_config) = storage::get_interop_config(&env) {
                     if interop_config.active_protocol != InteropProtocol::None {
                         // Enviamos dados CRUS. O adaptador decide como codificar.
@@ -228,13 +245,14 @@ impl GithubIdentityContract {
                             &interop_config.adapter_address,
                             &Symbol::new(&env, "send"),
                             (
-                                caller.clone(), 
-                                cc.destination_chain, 
+                                caller.clone(),
+                                cc.destination_chain,
                                 cc.destination_address,
                                 data.external_id.clone(),
                                 tier.to_number() as u32,
-                                cc.user_destination_address
-                            ).into_val(&env)
+                                cc.user_destination_address,
+                            )
+                                .into_val(&env),
                         );
                     }
                 }
@@ -334,17 +352,11 @@ impl GithubIdentityContract {
         Ok(())
     }
 
-    pub fn set_layerzero_config(
-        env: Env,
-        admin: Address,
-        endpoint: Address,
-    ) -> Result<(), Error> {
+    pub fn set_layerzero_config(env: Env, admin: Address, endpoint: Address) -> Result<(), Error> {
         admin.require_auth();
         Self::assert_admin(&env, &admin)?;
 
-        let config = types::LayerZeroConfig {
-            endpoint,
-        };
+        let config = types::LayerZeroConfig { endpoint };
         storage::set_layerzero_config(&env, &config);
         Ok(())
     }
@@ -366,6 +378,14 @@ impl GithubIdentityContract {
         Ok(())
     }
 
+    pub fn upgrade(env: Env, admin: Address, new_wasm_hash: BytesN<32>) -> Result<(), Error> {
+        admin.require_auth();
+        Self::assert_admin(&env, &admin)?;
+
+        env.deployer().update_current_contract_wasm(new_wasm_hash);
+        Ok(())
+    }
+
     fn assert_admin(env: &Env, caller: &Address) -> Result<(), Error> {
         let stored_admin = storage::get_admin(env)?;
         if caller != &stored_admin {
@@ -373,5 +393,4 @@ impl GithubIdentityContract {
         }
         Ok(())
     }
-
 }
