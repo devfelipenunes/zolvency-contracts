@@ -6,8 +6,11 @@ use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, IntoVal, M
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DataKey {
     Admin,
+    PendingAdmin,
     Signer,
-    Tokens, // Vec<Address>
+    Tokens,
+    Locks(Address),
+    Blacklist(Address),
 }
 
 #[cfg(test)]
@@ -106,5 +109,27 @@ impl ZolvencyRegistry {
         env.storage()
             .persistent()
             .set(&DataKey::Signer, &new_signer);
+    }
+
+    pub fn transfer_admin(env: Env, admin: Address, new_admin: Address) {
+        admin.require_auth();
+        let stored_admin: Address = env.storage().persistent().get(&DataKey::Admin).unwrap();
+        if admin != stored_admin {
+            panic!("Not admin");
+        }
+        env.storage()
+            .persistent()
+            .set(&DataKey::PendingAdmin, &new_admin);
+    }
+
+    pub fn accept_admin(env: Env, new_admin: Address) {
+        new_admin.require_auth();
+        let pending_admin: Address =
+            env.storage().persistent().get(&DataKey::PendingAdmin).unwrap();
+        if new_admin != pending_admin {
+            panic!("Not pending admin");
+        }
+        env.storage().persistent().set(&DataKey::Admin, &new_admin);
+        env.storage().persistent().remove(&DataKey::PendingAdmin);
     }
 }
