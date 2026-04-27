@@ -6,12 +6,7 @@ use soroban_sdk::{
     BytesN, Env, FromVal, String, Symbol,
 };
 
-// Importamos o Registry para mockar nos testes
-mod registry_contract {
-    soroban_sdk::contractimport!(
-        file = "../zolvency-registry/target/wasm32-unknown-unknown/release/zolvency_registry.wasm"
-    );
-}
+use zolvency_registry::{ZolvencyRegistry, ZolvencyRegistryClient};
 
 #[contract]
 pub struct MockAxelarGateway;
@@ -78,8 +73,8 @@ fn setup() -> TestEnv {
     env.mock_all_auths();
 
     // 1. Deploy do Registry (Necessário para o mint funcionar)
-    let registry_id = env.register(registry_contract::WASM, ());
-    let registry_client = registry_contract::Client::new(&env, &registry_id);
+    let registry_id = env.register(ZolvencyRegistry, ());
+    let registry_client = ZolvencyRegistryClient::new(&env, &registry_id);
 
     let admin = Address::generate(&env);
     let signer = Address::generate(&env);
