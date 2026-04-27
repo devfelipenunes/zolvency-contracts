@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import { IAxelarGateway } from "@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IAxelarGateway.sol";
 import { AxelarExecutable } from "@axelar-network/axelar-gmp-sdk-solidity/contracts/executable/AxelarExecutable.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title ZolvencyVerifierAxelar
@@ -25,6 +24,7 @@ contract ZolvencyVerifierAxelar is AxelarExecutable, Ownable {
         AxelarExecutable(_gateway) 
         Ownable(msg.sender) 
     {
+        require(_gateway != address(0), "INVALID_GATEWAY");
         sourceStellarAddress = _sourceStellarAddress;
     }
 

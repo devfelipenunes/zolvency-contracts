@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import { MessageHashUtils } from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title ZolvencyVerifierAuthority
@@ -24,10 +24,12 @@ contract ZolvencyVerifierAuthority is Ownable {
     event ReputationUpdated(address indexed user, bytes32 externalId, uint8 tier);
 
     constructor(address _authorityAddress) Ownable(msg.sender) {
+        require(_authorityAddress != address(0), "INVALID_AUTHORITY_ADDRESS");
         authorityAddress = _authorityAddress;
     }
 
     function setAuthority(address _newAuthority) external onlyOwner {
+        require(_newAuthority != address(0), "INVALID_AUTHORITY_ADDRESS");
         authorityAddress = _newAuthority;
     }
 
