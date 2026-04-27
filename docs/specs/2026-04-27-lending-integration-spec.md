@@ -26,7 +26,31 @@ let reputation: Map<Symbol, u64> = registry_client.get_user_reputation(&user_add
 | **Legend** | 1.5x | -5% |
 | **Singularity** | 2.0x (Máximo) | -10% |
 
-## 3. Mecanismo de Proteção (Reputation Lock)
+---
+
+## 3. Underwriting para RWA (Real World Assets)
+
+Diferente de SBTs sociais, SBTs de ativos RWA carregam valor intrínseco. Protocolos de Lending podem utilizar o Zolvency para colateralização direta de ativos físicos.
+
+### 3.1 Consulta de Saúde do Ativo (Asset Performance)
+Ao avaliar um ativo RWA como garantia:
+```rust
+let asset_metadata = registry_client.get_token_metadata(&asset_contract_address);
+// Verifique o performance_score dentro do current_state (bps)
+if asset_metadata.current_state.performance_score < 8000 {
+    panic!("Asset underperforming; higher collateral required");
+}
+```
+
+### 3.2 Lógica de Liquidação Física
+Se o empréstimo colateralizado por RWA entrar em default:
+1. O protocolo de Lending executa a apreensão legal do ativo (off-chain).
+2. O protocolo chama o Registry para registrar a liquidação física.
+3. O SBT do ativo é marcado como `:Seized`, encerrando sua vida financeira on-chain.
+
+---
+
+## 4. Mecanismo de Proteção (Reputation Lock)
 
 Ao abrir uma posição de dívida, o protocolo de Lending **deve** travar a reputação do usuário no Zolvency para evitar que ele use o mesmo score em múltiplos protocolos simultaneamente (Trust Arbitrage).
 

@@ -73,6 +73,8 @@ Cada contrato deve implementar a função `get_metadata(env: Env) -> TokenMetada
 ---
 
 **Nota para Agentes:** Ao iniciar uma tarefa de codificação:
-1. Verifique se o contrato segue a `ZolvencyTokenTrait` v6.0.
-2. Os testes unitários devem cobrir o cenário de "Passkey opcional".
-3. **MANDATO DE SINCRONIZAÇÃO E DENSIDADE:** É obrigatório atualizar os documentos correspondentes (`ARCHITECTURE.md`, `PRD.md`, `ECONOMY.md`) sempre que houver mudanças. A documentação DEVE seguir o **Protocolo de Hiper-Densidade**: incluir teoria pura, detalhes de implementação, crítica de engenharia e análise de red teaming. Nunca aceite documentação "em tópicos" rasa; busque profundidade técnica máxima.
+1. Verifique se o contrato segue o **Padrão Técnico ZTS-01** descrito em `ZTS_01_STANDARD.md`.
+2. Para novos contratos RWA, implemente o padrão de **Estado Dinâmico** descrito em `RWA_LIFECYCLE.md`.
+3. Siga o fluxo visual de verificação descrito em `ZK_EMAIL_FLOW.md` ao trabalhar com Spokes de fluxo de caixa Web2.
+4. Os testes unitários devem cobrir o cenário de "Passkey opcional" e "Proof-of-Freshness".
+5. **MANDATO DE SINCRONIZAÇÃO E DENSIDADE:** É obrigatório atualizar os documentos correspondentes (`ARCHITECTURE.md`, `PRD.md`, `ECONOMY.md`, `RWA_LIFECYCLE.md`, `ZTS_01_STANDARD.md`) sempre que houver mudanças. A documentação DEVE seguir o **Protocolo de Hiper-Densidade**: incluir teoria pura, detalhes de implementação, crítica de engenharia e análise de red teaming. Nunca aceite documentação "em tópicos" rasa; busque profundidade técnica máxima.

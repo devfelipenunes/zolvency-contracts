@@ -8,11 +8,15 @@ A documentação completa do projeto foi organizada para facilitar a manutençã
 
 ### 🏗️ [Arquitetura](./docs/architecture/)
 - **[Arquitetura Técnica](./docs/architecture/ARCHITECTURE.md)**: Visão geral do modelo Hub & Spoke.
+- **[Padrão Técnico ZTS-01](./docs/architecture/ZTS_01_STANDARD.md)**: O padrão de interface para novos Spokes de reputação.
+- **[Ciclo de Vida RWA](./docs/architecture/RWA_LIFECYCLE.md)**: Como gerenciar ativos físicos dinâmicos on-chain.
+- **[Fluxo ZK-Email](./docs/architecture/ZK_EMAIL_FLOW.md)**: Detalhamento visual da verificação de fluxo de caixa Web2.
 - **[Interoperabilidade](./docs/architecture/INTEROP.md)**: Detalhes sobre o sistema de mensagens cross-chain.
 - **[Guia de Integração para Lending](./docs/specs/2026-04-27-lending-integration-spec.md)**: Como protocolos de crédito usam o Zolvency.
 
 ### 🚀 [Produto](./docs/product/)
-- **[PRD - Product Requirements Document](./docs/product/PRD.md)**: Visão v6.0 do Trust Hub e integração RWA.
+- **[Manifesto Sovereign Trust](./docs/product/MANIFESTO.md)**: A visão estratégica de ir além da solvência e dominar o mercado RWA.
+- **[PRD - Product Requirements Document](./docs/product/PRD.md)**: Visão v6.1 do Trust Hub e integração RWA.
 - **[Horizontes Futuros](./docs/product/FUTURE_HORIZONS.md)**: 10 direções estratégicas de alta rentabilidade (Web2-to-Web3).
 - **[Modelo Econômico](./docs/product/ECONOMY.md)**: Tokenomics de spread e taxas B2B.
 - **[Personas e Jornadas](./docs/product/PERSONAS.md)**: Mapa de usuários, RWA Issuers e IAs.
