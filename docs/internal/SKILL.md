@@ -75,4 +75,4 @@ Cada contrato deve implementar a função `get_metadata(env: Env) -> TokenMetada
 **Nota para Agentes:** Ao iniciar uma tarefa de codificação:
 1. Verifique se o contrato segue a `ZolvencyTokenTrait` v6.0.
 2. Os testes unitários devem cobrir o cenário de "Passkey opcional".
-3. **MANDATO DE SINCRONIZAÇÃO:** É obrigatório atualizar os documentos correspondentes (`ARCHITECTURE.md`, `INTEROP.md`, `CHEATSHEET.md`) sempre que houver mudanças em Traits, lógica de governança ou novos fluxos de segurança. Não permita que o código e a documentação fiquem dessincronizados.
+3. **MANDATO DE SINCRONIZAÇÃO E DENSIDADE:** É obrigatório atualizar os documentos correspondentes (`ARCHITECTURE.md`, `PRD.md`, `ECONOMY.md`) sempre que houver mudanças. A documentação DEVE seguir o **Protocolo de Hiper-Densidade**: incluir teoria pura, detalhes de implementação, crítica de engenharia e análise de red teaming. Nunca aceite documentação "em tópicos" rasa; busque profundidade técnica máxima.
