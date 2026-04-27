@@ -16,6 +16,15 @@ pub enum DataKey {
 #[cfg(test)]
 mod test;
 
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TokenMetadata {
+    pub name: soroban_sdk::String,
+    pub symbol: soroban_sdk::String,
+    pub version: soroban_sdk::String,
+    pub data_source: soroban_sdk::String,
+}
+
 #[contract]
 pub struct ZolvencyRegistry;
 
@@ -167,5 +176,13 @@ impl ZolvencyRegistry {
     pub fn is_blacklisted(env: Env, user: Address) -> bool {
         let key = DataKey::Blacklist(user);
         env.storage().persistent().get(&key).unwrap_or(false)
+    }
+
+    pub fn get_token_metadata(env: Env, token_contract: Address) -> TokenMetadata {
+        env.invoke_contract(
+            &token_contract,
+            &Symbol::new(&env, "get_metadata"),
+            Vec::new(&env),
+        )
     }
 }
