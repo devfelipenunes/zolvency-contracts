@@ -1,67 +1,50 @@
-# Zolvency Protocol: Contracts
+# Zolvency Protocol: Smart Contracts
 
-Repositório oficial dos contratos inteligentes do Zolvency Protocol na rede Stellar (Soroban) e adaptadores de interoperabilidade.
+Repositório oficial dos contratos inteligentes do Zolvency Protocol na rede Stellar (Soroban) e adaptadores de interoperabilidade EVM (Solidity).
 
-## 📂 Estrutura de Documentação
+## 📂 Estrutura de Engenharia
 
-A documentação completa do projeto foi organizada para facilitar a manutenção e o onboarding:
+A documentação técnica foca na arquitetura, padrões de interface e fluxos de segurança dos contratos:
 
-### 🏗️ [Arquitetura](./docs/architecture/)
-- **[Arquitetura Técnica](./docs/architecture/ARCHITECTURE.md)**: Visão geral do modelo Hub & Spoke.
-- **[Padrão Técnico ZTS-01](./docs/architecture/ZTS_01_STANDARD.md)**: O padrão de interface para novos Spokes de reputação.
-- **[Ciclo de Vida RWA](./docs/architecture/RWA_LIFECYCLE.md)**: Como gerenciar ativos físicos dinâmicos on-chain.
-- **[Fluxo ZK-Email](./docs/architecture/ZK_EMAIL_FLOW.md)**: Detalhamento visual da verificação de fluxo de caixa Web2.
-- **[Interoperabilidade](./docs/architecture/INTEROP.md)**: Detalhes sobre o sistema de mensagens cross-chain.
-- **[Guia de Integração para Lending](./docs/specs/2026-04-27-lending-integration-spec.md)**: Como protocolos de crédito usam o Zolvency.
+### 🏗️ Arquitetura e Padrões
+- **[Arquitetura Técnica](./docs/architecture/ARCHITECTURE.md)**: Visão detalhada do modelo Hub & Spoke e gestão de estado no Soroban.
+- **[Padrão Técnico ZTS-01](./docs/architecture/ZTS_01_STANDARD.md)**: Especificação da interface obrigatória para novos Spokes de reputação.
+- **[Ciclo de Vida RWA](./docs/architecture/RWA_LIFECYCLE.md)**: Implementação de estados dinâmicos para ativos físicos on-chain.
+- **[Fluxo ZK-Email](./docs/architecture/ZK_EMAIL_FLOW.md)**: Protocolo de verificação de provas ZK para fluxos de caixa Web2.
+- **[Interoperabilidade](./docs/architecture/INTEROP.md)**: Arquitetura de mensageria cross-chain e Adapter Pattern.
 
-### 🚀 [Produto](./docs/product/)
-- **[Manifesto Sovereign Trust](./docs/product/MANIFESTO.md)**: A visão estratégica de ir além da solvência e dominar o mercado RWA.
-- **[PRD - Product Requirements Document](./docs/product/PRD.md)**: Visão v6.1 do Trust Hub e integração RWA.
-- **[Horizontes Futuros](./docs/product/FUTURE_HORIZONS.md)**: 10 direções estratégicas de alta rentabilidade (Web2-to-Web3).
-- **[Modelo Econômico](./docs/product/ECONOMY.md)**: Tokenomics de spread e taxas B2B.
-- **[Personas e Jornadas](./docs/product/PERSONAS.md)**: Mapa de usuários, RWA Issuers e IAs.
-- **[Matriz de Riscos](./docs/product/RISK_MATRIX.md)**: Segurança e planos de mitigação.
-- **[Estratégia de Mercado (GTM)](./docs/product/GTM_STRATEGY.md)**: Roadmap de adoção e crescimento.
+### 🛠️ Implementação e Integração
+- **[Guia de Integração para Lending](./docs/specs/2026-04-27-lending-integration-spec.md)**: Documentação de API para protocolos de crédito consumirem o Hub.
+- **[Comandos Úteis (Cheatsheet)](./docs/guides/CHEATSHEET.md)**: Guia rápido para desenvolvimento, deploy e interação via Soroban CLI.
+- **[Guia de Interoperabilidade Axelar](./docs/guides/AXELAR_INTEROP_GUIDE.md)**: Detalhes técnicos da ponte Stellar <-> EVM.
+- **[Especificações de Design](./docs/specs/)**: Histórico de decisões técnicas e design de funcionalidades.
 
-### 📚 [Guias e Specs](./docs/)
-- **[Comandos Úteis (Cheatsheet)](./docs/guides/CHEATSHEET.md)**: Guia rápido de Soroban CLI e deploy.
-- **[Guia de Interoperabilidade Axelar](./docs/guides/AXELAR_INTEROP_GUIDE.md)**: Passo a passo para integração com EVM.
-- **[Especificações de Design](./docs/specs/)**: Detalhes técnicos de cada funcionalidade implementada.
-- **[Planos de Implementação](./docs/plans/)**: Histórico de execução das tasks.
+## 🤖 Automação e IA
+Este repositório utiliza uma [Skill de Desenvolvimento Interna](./docs/internal/SKILL.md) para garantir que agentes de IA mantenham os padrões de segurança "Armor Up" e a integridade da documentação técnica.
 
-## 🤖 Para Agentes de IA
-Este repositório inclui uma [Skill de Desenvolvimento Interna](./docs/internal/SKILL.md). Ao trabalhar neste projeto, carregue esta skill para garantir adesão aos padrões arquiteturais e de segurança do Zolvency.
+## ⚡ Quick Start (Makefile)
 
-## ⚡ Quick Start
-
-Se você acabou de clonar o repositório, utilize o `Makefile` para preparar o ambiente:
+Utilize o `Makefile` para gerenciar o ciclo de vida do desenvolvimento:
 
 ```bash
-# Instalar dependências e compilar contratos
+# Compilar todos os contratos (Stellar WASM & EVM Solidity)
 make build
 
-# Executar a suíte completa de testes
+# Executar a suíte completa de testes unitários e integração
 make test
 
-# Verificar lint e formatação
-make lint && make fmt
+# Executar auditoria de segurança (Slither, Cargo Audit, Clippy)
+make audit
+
+# Formatação e Linting
+make fmt && make lint
 ```
 
-## 🛠️ Como começar
-
-### Pré-requisitos
-- Rust & Cargo
-- Soroban CLI
-- Node.js (para scripts de validação)
-
-### Build e Testes
-```bash
-# Build de todos os contratos
-cargo build --target wasm32-unknown-unknown --release
-
-# Executar testes unitários
-cargo test
-```
+## 🛠️ Requisitos
+- **Rust/Cargo**: Toolchain `stable` com target `wasm32-unknown-unknown`.
+- **Stellar CLI**: Para deploy e interação com a rede Soroban.
+- **Foundry**: Necessário para compilação e testes dos contratos EVM.
+- **Slither**: Para análise estática de segurança em Solidity.
 
 ---
-Para mais detalhes sobre a visão do produto, veja o [PRD](./docs/product/PRD.md).
+*Este repositório é focado estritamente na lógica de contratos inteligentes e infraestrutura de segurança do protocolo Zolvency.*
