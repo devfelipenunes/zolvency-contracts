@@ -9,6 +9,7 @@ A documentação completa do projeto foi organizada para facilitar a manutençã
 ### 🏗️ [Arquitetura](./docs/architecture/)
 - **[Arquitetura Técnica](./docs/architecture/ARCHITECTURE.md)**: Visão geral do modelo Hub & Spoke.
 - **[Interoperabilidade](./docs/architecture/INTEROP.md)**: Detalhes sobre o sistema de mensagens cross-chain.
+- **[Guia de Integração para Lending](./docs/specs/2026-04-27-lending-integration-spec.md)**: Como protocolos de crédito usam o Zolvency.
 
 ### 🚀 [Produto](./docs/product/)
 - **[PRD - Product Requirements Document](./docs/product/PRD.md)**: Visão v6.0 do Trust Hub e integração RWA.

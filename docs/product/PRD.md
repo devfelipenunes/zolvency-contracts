@@ -36,6 +36,11 @@ O **Zolvency** é o protocolo de liquidação de confiança e integração RWA d
     - **Score de Fluxo (Renda/Vendas Web2)**
     - **Score de Lastro (Stake/RWA)**
 
+### 3.3 Reputation Decay (Proof-of-Freshness)
+- A confiança não é estática. SBTs Zolvency possuem um mecanismo de **Decay Linear**.
+- **Regra:** Após o período de validade (Business TTL, ex: 90 dias), o score do token começa a diminuir 1% ao dia até ser atualizado com uma nova prova (Zk-Proof).
+- **Incentivo:** Isso obriga os usuários a manterem suas identidades "frescas" e desencoraja o uso de perfis abandonados para colateralização.
+
 ---
 
 ## 4. Modelos de Monetização de Alta Performance
