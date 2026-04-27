@@ -178,6 +178,7 @@ pub struct Config {
     pub access_control: soroban_sdk::Address,
     pub treasury: soroban_sdk::Address,
     pub mint_fee: i128,
+    pub zk_verifier: Option<soroban_sdk::Address>,
 }
 
 #[contracttype]

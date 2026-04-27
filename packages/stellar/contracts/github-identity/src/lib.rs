@@ -82,10 +82,24 @@ impl GithubIdentityContract {
             access_control,
             treasury,
             mint_fee,
+            zk_verifier: None,
         };
 
         storage::set_config(&env, &config);
 
+        Ok(())
+    }
+
+    pub fn set_zk_verifier(
+        env: Env,
+        admin: Address,
+        verifier: Option<Address>,
+    ) -> Result<(), Error> {
+        admin.require_auth();
+        Self::assert_admin(&env, &admin)?;
+        let mut config = storage::get_config(&env)?;
+        config.zk_verifier = verifier;
+        storage::set_config(&env, &config);
         Ok(())
     }
 
@@ -153,6 +167,17 @@ impl GithubIdentityContract {
         if config.mint_fee > 0 {
             let token_client = token::Client::new(&env, &config.fee_token);
             token_client.transfer(&caller, &config.treasury, &config.mint_fee);
+        }
+
+        if let Some(verifier) = config.zk_verifier {
+            let is_valid: bool = env.invoke_contract(
+                &verifier,
+                &Symbol::new(&env, "verify_proof"),
+                Vec::from_array(&env, [params.proof_data.clone().into_val(&env)]),
+            );
+            if !is_valid {
+                return Err(Error::Unauthorized);
+            }
         }
 
         storage::increment_nonce(&env, &caller);
