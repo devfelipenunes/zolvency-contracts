@@ -137,8 +137,11 @@ impl ZolvencyRegistry {
 
     pub fn accept_admin(env: Env, new_admin: Address) {
         new_admin.require_auth();
-        let pending_admin: Address =
-            env.storage().persistent().get(&DataKey::PendingAdmin).unwrap();
+        let pending_admin: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::PendingAdmin)
+            .unwrap();
         if new_admin != pending_admin {
             panic!("Not pending admin");
         }

@@ -210,8 +210,7 @@ impl GithubIdentityContract {
             if !cc.destination_chain.is_empty() && !cc.destination_address.is_empty() {
                 if let Ok(interop_config) = storage::get_interop_config(&env) {
                     if interop_config.active_protocol != InteropProtocol::None {
-                        let messenger =
-                            MessengerClient::new(&env, &interop_config.adapter_address);
+                        let messenger = MessengerClient::new(&env, &interop_config.adapter_address);
                         messenger.send(
                             &caller,
                             &cc.destination_chain,
@@ -272,8 +271,7 @@ impl GithubIdentityContract {
             if !cc.destination_chain.is_empty() && !cc.destination_address.is_empty() {
                 if let Ok(interop_config) = storage::get_interop_config(&env) {
                     if interop_config.active_protocol != InteropProtocol::None {
-                        let messenger =
-                            MessengerClient::new(&env, &interop_config.adapter_address);
+                        let messenger = MessengerClient::new(&env, &interop_config.adapter_address);
                         messenger.send(
                             &caller,
                             &cc.destination_chain,
