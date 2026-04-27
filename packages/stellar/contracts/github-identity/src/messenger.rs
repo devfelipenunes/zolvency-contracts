@@ -1,5 +1,4 @@
-#![no_std]
-use soroban_sdk::{contractclient, Address, Bytes, Env, String};
+use soroban_sdk::{contractclient, Address, Bytes, Env, Error, String};
 
 #[contractclient(name = "MessengerClient")]
 pub trait MessengerTrait {
@@ -13,7 +12,7 @@ pub trait MessengerTrait {
         destination_chain: String,
         destination_address: String,
         external_id: String,
-        tier: u8,
+        tier: u32,
         user_evm_address: Bytes,
-    ) -> Result<(), u32>;
+    ) -> Result<(), Error>;
 }

@@ -1,6 +1,7 @@
 #![no_std]
 
 mod interface;
+mod messenger;
 mod storage;
 mod types;
 
@@ -8,10 +9,11 @@ mod types;
 mod test;
 
 use soroban_sdk::{
-    contract, contractimpl, token, Address, Bytes, BytesN, Env, IntoVal, String, Symbol, Val, Vec,
+    contract, contractimpl, token, Address, Bytes, BytesN, Env, IntoVal, String, Symbol, Vec,
 };
 
 pub use interface::ZolvencyTokenTrait;
+pub use messenger::MessengerClient;
 pub use types::{
     AxelarConfig, CrossChainParams, Error, GithubData, InteropConfig, InteropProtocol, MintParams,
     Tier, TokenMetadata,
@@ -208,19 +210,15 @@ impl GithubIdentityContract {
             if !cc.destination_chain.is_empty() && !cc.destination_address.is_empty() {
                 if let Ok(interop_config) = storage::get_interop_config(&env) {
                     if interop_config.active_protocol != InteropProtocol::None {
-                        // Enviamos dados CRUS. O adaptador decide como codificar.
-                        let _: Val = env.invoke_contract(
-                            &interop_config.adapter_address,
-                            &Symbol::new(&env, "send"),
-                            (
-                                caller.clone(),
-                                cc.destination_chain,
-                                cc.destination_address,
-                                params.external_id.clone(),
-                                tier.to_number() as u32,
-                                cc.user_destination_address,
-                            )
-                                .into_val(&env),
+                        let messenger =
+                            MessengerClient::new(&env, &interop_config.adapter_address);
+                        messenger.send(
+                            &caller,
+                            &cc.destination_chain,
+                            &cc.destination_address,
+                            &params.external_id,
+                            &(tier.to_number() as u32),
+                            &cc.user_destination_address,
                         );
                     }
                 }
@@ -274,19 +272,15 @@ impl GithubIdentityContract {
             if !cc.destination_chain.is_empty() && !cc.destination_address.is_empty() {
                 if let Ok(interop_config) = storage::get_interop_config(&env) {
                     if interop_config.active_protocol != InteropProtocol::None {
-                        // Enviamos dados CRUS. O adaptador decide como codificar.
-                        let _: Val = env.invoke_contract(
-                            &interop_config.adapter_address,
-                            &Symbol::new(&env, "send"),
-                            (
-                                caller.clone(),
-                                cc.destination_chain,
-                                cc.destination_address,
-                                data.external_id.clone(),
-                                tier.to_number() as u32,
-                                cc.user_destination_address,
-                            )
-                                .into_val(&env),
+                        let messenger =
+                            MessengerClient::new(&env, &interop_config.adapter_address);
+                        messenger.send(
+                            &caller,
+                            &cc.destination_chain,
+                            &cc.destination_address,
+                            &data.external_id,
+                            &(tier.to_number() as u32),
+                            &cc.user_destination_address,
                         );
                     }
                 }
