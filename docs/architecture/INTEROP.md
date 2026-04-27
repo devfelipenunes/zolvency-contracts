@@ -8,7 +8,6 @@ O contrato `GithubIdentityContract` (Stellar) utiliza o **Adapter Pattern** para
 Protocolos suportados:
 - **Axelar GMP:** Robusto, baseado em gateways. Ideal para "Push" automático.
 - **Authority-Pull:** Quase custo zero no Stellar. Emite eventos que são assinados off-chain e puxados pelo usuário na EVM.
-- **LayerZero V2:** Ultra-rápido, baseado em OApps.
 
 ## 2. Como trocar o protocolo ativo
 A troca é feita apontando para o contrato do adaptador correspondente.
@@ -36,15 +35,14 @@ stellar contract invoke --id <IDENTITY_ID> --source admin --network testnet -- \
 
 ## 3. Comparativo Técnico
 
-| Característica | Axelar GMP | Authority-Pull | LayerZero V2 |
-| :--- | :--- | :--- | :--- |
-| **Modelo** | Push (Gateway) | Pull (Signatures) | Push (OApp) |
-| **Custo Stellar** | ~15 XLM (Gás EVM) | ~0.1 XLM (Evento) | Variável |
-| **Latência** | ~2-5 min | Instantâneo | < 1 min |
-| **UX** | Automática | Requer 2 passos | Automática |
+| Característica | Axelar GMP | Authority-Pull |
+| :--- | :--- | :--- |
+| **Modelo** | Push (Gateway) | Pull (Signatures) |
+| **Custo Stellar** | ~15 XLM (Gás EVM) | ~0.1 XLM (Evento) |
+| **Latência** | ~2-5 min | Instantâneo |
+| **UX** | Automática | Requer 2 passos |
 
 
 ## 5. Próximos Passos Recomendados
 - [x] Implementar o terceiro adaptador: **Authority-Pull** (Assinaturas off-chain) para custo quase zero no Stellar.
-- [ ] Monitorar o **LayerZero Scan** e o **Axelarscan** para validar as provas de entrega.
-- [ ] Implementar adaptador nativo **LayerZero V2** (OApp) para Stellar.
+- [ ] Monitorar o **Axelarscan** para validar as provas de entrega.
