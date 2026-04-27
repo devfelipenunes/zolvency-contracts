@@ -13,22 +13,32 @@ SEPOLIA_RPC=${SEPOLIA_RPC:-"https://ethereum-sepolia.publicnode.com"}
 echo "🌟 Starting Testnet Deployment..."
 
 # 1. Deploy Zolvency Registry
-echo "📦 Deploying Zolvency Registry..."
-REGISTRY_WASM="packages/stellar/contracts/zolvency-registry/target/wasm32-unknown-unknown/release/zolvency_registry.wasm"
-REGISTRY_ID=$($STELLAR_CLI contract deploy \
-    --wasm "$REGISTRY_WASM" \
-    --source "$DEPLOYER_SECRET" \
-    --network testnet)
-echo "✅ Registry deployed: $REGISTRY_ID"
+if [ -z "$ZOLVENCY_REGISTRY_ID" ]; then
+    echo "📦 Deploying Zolvency Registry..."
+    REGISTRY_WASM="packages/stellar/contracts/zolvency-registry/target/wasm32-unknown-unknown/release/zolvency_registry.wasm"
+    REGISTRY_ID=$($STELLAR_CLI contract deploy \
+        --wasm "$REGISTRY_WASM" \
+        --source "$DEPLOYER_SECRET" \
+        --network testnet)
+    echo "✅ Registry deployed: $REGISTRY_ID"
+else
+    echo "🔄 Using existing Registry: $ZOLVENCY_REGISTRY_ID"
+    REGISTRY_ID=$ZOLVENCY_REGISTRY_ID
+fi
 
 # 2. Deploy Github Identity
-echo "🆔 Deploying Github Identity..."
-IDENTITY_WASM="packages/stellar/contracts/github-identity/target/wasm32-unknown-unknown/release/github_identity.wasm"
-IDENTITY_ID=$($STELLAR_CLI contract deploy \
-    --wasm "$IDENTITY_WASM" \
-    --source "$DEPLOYER_SECRET" \
-    --network testnet)
-echo "✅ Identity deployed: $IDENTITY_ID"
+if [ -z "$GITHUB_IDENTITY_ID" ]; then
+    echo "🆔 Deploying Github Identity..."
+    IDENTITY_WASM="packages/stellar/contracts/github-identity/target/wasm32-unknown-unknown/release/github_identity.wasm"
+    IDENTITY_ID=$($STELLAR_CLI contract deploy \
+        --wasm "$IDENTITY_WASM" \
+        --source "$DEPLOYER_SECRET" \
+        --network testnet)
+    echo "✅ Identity deployed: $IDENTITY_ID"
+else
+    echo "🔄 Using existing Identity: $GITHUB_IDENTITY_ID"
+    IDENTITY_ID=$GITHUB_IDENTITY_ID
+fi
 
 # 3. Deploy EVM Verifier (Axelar)
 echo "⛓️ Deploying EVM Verifier (Axelar) to Sepolia..."
