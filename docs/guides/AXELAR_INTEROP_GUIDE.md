@@ -13,49 +13,49 @@ O sistema utiliza o modelo **Push Automático**, onde uma ação no Stellar disp
 ## 2. Implementação Técnica
 
 ### 2.1 Codificação ABI no Rust (Stellar)
-Como o Soroban e o EVM possuem formatos de dados diferentes, implementamos um codificador manual para garantir compatibilidade com o `abi.decode` do Solidity.
+Como o Soroban e o EVM possuem formatos de dados diferentes, a lógica de codificação manual é encapsulada dentro de cada **Contrato Adaptador**. Isso mantém o contrato de Identidade focado apenas na lógica de reputação.
 
 **Formato do Payload (EVM-Compatible):**
-1. `externalId` (bytes32): Hash do identificador do GitHub.
-2. `tier` (uint8): Nível de reputação (0-4).
+1. `externalId` (bytes32): Hash do identificador do GitHub (Keccak256).
+2. `tier` (uint32): Nível de reputação (1-5).
 3. `user` (address): Endereço da carteira do usuário no EVM (20 bytes).
 
 ```rust
-// github-identity/src/lib.rs
+// packages/stellar/contracts/adapters/axelar/src/lib.rs
 fn encode_evm_payload(env: &Env, external_id: &String, tier: u8, user: &Bytes) -> Bytes {
     let mut payload = Bytes::new(env);
     // 1. externalId (32 bytes)
     let external_id_hash = env.crypto().keccak256(&external_id.clone().to_xdr(env));
     payload.append(&external_id_hash.into());
-    // 2. tier (uint8 padded to 32 bytes)
+    
+    // 2. tier (uint32 padded to 32 bytes)
     let mut tier_bytes = [0u8; 32];
     tier_bytes[31] = tier;
     payload.append(&Bytes::from_array(env, &tier_bytes));
+    
     // 3. user address (20 bytes padded to 32 bytes)
     let mut user_bytes = [0u8; 32];
     user.copy_into_slice(&mut user_bytes[12..32]);
     payload.append(&Bytes::from_array(env, &user_bytes));
+    
     payload
 }
 ```
 
-### 2.2 Integração com Axelar Amplifier (v2026)
-A assinatura do `pay_gas` no Soroban segue o padrão mais recente da Axelar para garantir a automação do relayer.
+### 2.2 Uso do MessengerClient (Stellar Side)
+O contrato de identidade utiliza uma interface tipada (`MessengerClient`) para interagir com os adaptadores, garantindo que o despacho cross-chain seja modular e expansível.
 
 ```rust
-// Pagamento de Gás
-axelar_client.pay_gas(
-    caller.clone(),
-    cc.destination_chain.clone(),
-    cc.destination_address.clone(),
-    payload.clone(),
-    caller.clone(), // Spender
-    axelar_config.gas_token,
-    1_000_000, // 1 XLM approx
+// github-identity/src/lib.rs
+let messenger = MessengerClient::new(&env, &interop_config.adapter_address);
+messenger.send(
+    &caller,
+    &cc.destination_chain,
+    &cc.destination_address,
+    &params.external_id,
+    &(tier.to_number() as u32),
+    &cc.user_destination_address,
 );
-
-// Envio da Mensagem
-axelar_client.call_contract(caller.clone(), cc.destination_chain, cc.destination_address, payload);
 ```
 
 ### 2.3 Contrato Verificador (Solidity)
