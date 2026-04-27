@@ -59,6 +59,10 @@ impl ZolvencyRegistry {
     /// Retorna todos os tokens registrados que um usuário possui e seus dados básicos.
     /// Esta função será usada pesadamente pelo SDK.
     pub fn get_user_reputation(env: Env, user: Address) -> Map<Symbol, u64> {
+        if Self::is_blacklisted(env.clone(), user.clone()) {
+            return Map::new(&env); // Retorna vazio se estiver na blacklist
+        }
+
         let tokens: Vec<Address> = env
             .storage()
             .persistent()
@@ -131,5 +135,37 @@ impl ZolvencyRegistry {
         }
         env.storage().persistent().set(&DataKey::Admin, &new_admin);
         env.storage().persistent().remove(&DataKey::PendingAdmin);
+    }
+
+    pub fn lock_reputation(env: Env, caller: Address, user: Address, unlock_timestamp: u64) {
+        // Nota: Em produção, 'caller' seria verificado contra uma lista de protocolos autorizados.
+        caller.require_auth();
+
+        let key = DataKey::Locks(user.clone());
+        env.storage().persistent().set(&key, &unlock_timestamp);
+    }
+
+    pub fn is_locked(env: Env, user: Address) -> bool {
+        let key = DataKey::Locks(user);
+        if let Some(unlock_timestamp) = env.storage().persistent().get::<_, u64>(&key) {
+            env.ledger().timestamp() < unlock_timestamp
+        } else {
+            false
+        }
+    }
+
+    pub fn apply_slashing(env: Env, admin: Address, user: Address) {
+        admin.require_auth();
+        let stored_admin: Address = env.storage().persistent().get(&DataKey::Admin).unwrap();
+        if admin != stored_admin {
+            panic!("Not admin");
+        }
+        let key = DataKey::Blacklist(user.clone());
+        env.storage().persistent().set(&key, &true);
+    }
+
+    pub fn is_blacklisted(env: Env, user: Address) -> bool {
+        let key = DataKey::Blacklist(user);
+        env.storage().persistent().get(&key).unwrap_or(false)
     }
 }
