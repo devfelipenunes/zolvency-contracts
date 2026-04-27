@@ -6,7 +6,10 @@ set -e
 # Load .env
 source .env
 
-STELLAR_CLI="./stellar-cli"
+STELLAR_CLI="stellar"
+if [ -f "./.bin/stellar-cli" ]; then
+    STELLAR_CLI="./.bin/stellar-cli"
+fi
 # Using SEPOLIA_RPC from .env if available, otherwise fallback
 SEPOLIA_RPC=${SEPOLIA_RPC:-"https://ethereum-sepolia.publicnode.com"}
 

@@ -11,7 +11,10 @@ if [ -z "$CONTRACT_ID" ]; then
   exit 1
 fi
 
-STELLAR_CLI="../../stellar-cli"
+STELLAR_CLI="stellar"
+if [ -f "../../../../.bin/stellar-cli" ]; then
+    STELLAR_CLI="../../../../.bin/stellar-cli"
+fi
 
 # Addresses from .env (make sure to set them or they will use defaults)
 GATEWAY=${AXELAR_GATEWAY_STELLAR:-"CCSNWHMQSPTW4PS7L32OIMH7Z6NFNCKYZKNFSWRSYX7MK64KHBDZDT5I"}

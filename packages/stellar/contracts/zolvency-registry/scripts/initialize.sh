@@ -3,7 +3,10 @@
 
 set -e
 
-STELLAR_CLI="../../stellar-cli"
+STELLAR_CLI="stellar"
+if [ -f "../../../../.bin/stellar-cli" ]; then
+    STELLAR_CLI="../../../../.bin/stellar-cli"
+fi
 CONTRACT_ID=$1
 
 if [ -z "$CONTRACT_ID" ]; then

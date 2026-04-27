@@ -13,7 +13,10 @@ CONTRACT_ID=$1
 
 echo "🔧 Initializing contract $CONTRACT_ID..."
 
-STELLAR_CLI="../../stellar-cli"
+STELLAR_CLI="stellar"
+if [ -f "../../../../.bin/stellar-cli" ]; then
+    STELLAR_CLI="../../../../.bin/stellar-cli"
+fi
 
 # Get the deployer address to use as admin
 ADMIN=$($STELLAR_CLI keys address deployer)

@@ -4,7 +4,10 @@
 
 set -e
 
-STELLAR_CLI="../../stellar-cli"
+STELLAR_CLI="stellar"
+if [ -f "../../../../.bin/stellar-cli" ]; then
+    STELLAR_CLI="../../../../.bin/stellar-cli"
+fi
 
 echo "🔨 Building contract (optimized)..."
 # Use the CLI build with optimize flag to produce an optimized wasm in the workspace target

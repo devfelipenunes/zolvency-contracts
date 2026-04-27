@@ -12,7 +12,10 @@ if [ -z "$CONTRACT_ID" ] || [ -z "$ADAPTER_ID" ]; then
   exit 1
 fi
 
-STELLAR_CLI="../../stellar-cli"
+STELLAR_CLI="stellar"
+if [ -f "../../../../.bin/stellar-cli" ]; then
+    STELLAR_CLI="../../../../.bin/stellar-cli"
+fi
 
 # Get the deployer address to use as admin
 ADMIN=$($STELLAR_CLI keys address deployer)

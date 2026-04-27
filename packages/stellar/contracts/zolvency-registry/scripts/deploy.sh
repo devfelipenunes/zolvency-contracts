@@ -3,7 +3,10 @@
 
 set -e
 
-STELLAR_CLI="../../stellar-cli"
+STELLAR_CLI="stellar"
+if [ -f "../../../../.bin/stellar-cli" ]; then
+    STELLAR_CLI="../../../../.bin/stellar-cli"
+fi
 
 echo "🔨 Building Registry contract (optimized)..."
 $STELLAR_CLI contract build --optimize

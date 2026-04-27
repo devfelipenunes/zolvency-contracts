@@ -1,6 +1,7 @@
 use soroban_sdk::{contractclient, Address, Bytes, Env, Error, String};
 
 #[contractclient(name = "MessengerClient")]
+#[allow(dead_code)]
 pub trait MessengerTrait {
     /// Estima a taxa necessária para o envio cross-chain.
     fn estimate_fee(env: Env, destination_chain: String) -> i128;
