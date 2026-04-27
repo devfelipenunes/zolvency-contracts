@@ -3,12 +3,7 @@
 use super::*;
 use soroban_sdk::{testutils::Address as _, Address, Bytes, BytesN, Env, String, Symbol};
 
-// Importamos o contrato de identidade para usar no teste
-mod github_contract {
-    soroban_sdk::contractimport!(
-        file = "../github-identity/target/wasm32-unknown-unknown/release/github_identity.wasm"
-    );
-}
+use github_identity::{GithubIdentityContract, GithubIdentityContractClient, MintParams};
 
 #[test]
 fn test_registry_integration_with_github_token() {
@@ -24,8 +19,8 @@ fn test_registry_integration_with_github_token() {
     registry_client.initialize(&admin, &signer);
 
     // 2. Deploy do Github Identity (Spoke)
-    let github_id = env.register(github_contract::WASM, ());
-    let github_client = github_contract::Client::new(&env, &github_id);
+    let github_id = env.register(GithubIdentityContract, ());
+    let github_client = GithubIdentityContractClient::new(&env, &github_id);
 
     github_client.initialize(
         &admin,
@@ -43,11 +38,11 @@ fn test_registry_integration_with_github_token() {
     let user = Address::generate(&env);
     let signature = BytesN::from_array(&env, &[0u8; 64]);
 
-    let params = github_contract::MintParams {
+    let params = MintParams {
         username: String::from_str(&env, "devfelipenunes"),
         external_id: String::from_str(&env, "gh_123"),
-        passkey: None,           // Alterado para None
-        passkey_signature: None, // Alterado para None
+        passkey: None,
+        passkey_signature: None,
         contributions: 1500u32,
         proof_data: Bytes::new(&env),
         nonce: 0u64,
