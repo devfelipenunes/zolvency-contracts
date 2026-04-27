@@ -1,0 +1,10 @@
+{
+  "detectors_to_exclude": "naming-convention,solc-version,low-level-calls",
+  "filter_paths": "lib",
+  "solc_remaps": [
+    "@axelar-network/axelar-gmp-sdk-solidity/=lib/axelar-gmp-sdk-solidity/",
+    "@layerzerolabs/oapp-evm/=lib/layerzero-v2/packages/layerzero-v2/evm/oapp/",
+    "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+    "forge-std/=lib/forge-std/src/"
+  ]
+}

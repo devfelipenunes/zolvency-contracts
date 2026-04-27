@@ -24,6 +24,11 @@ clean:
 	@echo "🧹 Cleaning targets..."
 	cargo clean
 
+.PHONY: audit-evm
+audit-evm:
+	@echo "🔍 Running Slither security audit..."
+	slither packages/evm/ --config-file slither.config.json
+
 # Helper para rodar a automação completa
 deploy-testnet: build
 	@echo "🚀 Starting testnet automation..."
