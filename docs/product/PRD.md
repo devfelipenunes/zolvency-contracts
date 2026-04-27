@@ -47,7 +47,12 @@ A reputação é perecível.
 - **Mecânica:** Decaimento linear de 1% ao dia após o `Business TTL` (90 dias).
 - **Trade-off:** Aumenta a frequência de transações (e taxas de rede), mas garante que o colateral de reputação não seja baseado em dados obsoletos (ex: um dev que parou de programar há 2 anos).
 
-### 3.3 Slashing Global (Blacklisting)
+### 3.3 Zolvency Credit Multiplier (Risk Aggregator)
+O Hub evolui de uma listagem para um **Cérebro de Underwriting**.
+- **Mecânica:** Combinação ponderada de múltiplos SBTs (ex: GitHub + Tax + Machine-Health) para gerar um multiplicador de LTV único e dinâmico.
+- [[Trust-LTV-Multiplier]], [[Risk-Aggregation]]
+
+### 3.4 Slashing Global (Blacklisting)
 A "Pena de Morte" financeira no ecossistema.
 - **Gatilho:** Liquidação forçada em um protocolo parceiro envia uma chamada de `apply_slashing` ao Registry.
 - **Efeito:** O endereço do usuário é marcado em `DataKey::Blacklist`. Todas as consultas de reputação retornam `Map::new()`, invalidando instantaneamente qualquer outro benefício ou linha de crédito ativa.

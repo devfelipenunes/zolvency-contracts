@@ -1,33 +1,59 @@
-# Zolvency Future Horizons: 10 Key Strategic Directions
+# Zolvency Future Horizons: Scaling the Trust Hub
+## 10 Strategic Verticals for the Universal Reputation Economy
 
-Após analisar 100+ cenários de aplicabilidade para o Zolvency Trust Hub, estas são as 10 direções mais rentáveis e impactantes que o software pode seguir:
+A arquitetura **Hub & Spoke** do Zolvency permite uma escalabilidade modular sem precedentes. Abaixo estão as 10 fronteiras de expansão mapeadas para transformar o rastro digital e físico em capital on-chain.
 
-### 1. O "Oráculo de Holerite" (Streaming de Crédito)
-Transformar a renda mensal Web2 em um fluxo USDC na Stellar. Uso de ZK-Email para provar salário sem revelar a empresa.
+---
 
-### 2. Ativos como Identidades (RWA Identity)
-Cada imóvel ou veículo tokenizado possui um SBT que carrega seu "currículo" (manutenção, taxas, performance). Fundamental para precificação de mercado secundário.
+### 1. The Cashflow Spoke: Oráculo de Recebíveis (Payroll & Invoicing)
+- **O que é:** Transformação de fluxos de caixa Web2 em liquidez Web3 via ZK-Email.
+- **Foco:** Freelancers, exportadores e funcionários de startups.
+- [[ZK-Email-Receivables]], [[Streaming-Credit]]
 
-### 3. Institutional Gatekeeper (Gated-DeFi)
-A Zolvency atua como o firewall de pools de liquidez. Apenas usuários com o "Institutional Pass" (KYC Web2 verificado via ZK) podem depositar capital.
+### 2. The RWA Performance Spoke: Machine-Health SBT
+- **O que é:** SBTs vinculados a ativos físicos que rastreiam saúde técnica em tempo real.
+- **Mecânica:** Integração com sensores IoT para atualizar o `performance_score` do ativo. Ativos bem mantidos geram LTVs maiores.
+- [[Deep-RWA]], [[IoT-Attestation]]
 
-### 4. Reputation-Backed Stablecoins
-Emissão de micro-stablecoins garantidas exclusivamente pelo score Zolvency do usuário (crédito não-colateralizado).
+### 3. The Tax-SBT: Prova de Higiene Fiscal
+- **O que é:** Atestado de conformidade tributária e faturamento anual para empresas.
+- **Impacto:** Permite empréstimos corporativos (B2B) trustless na Stellar, reduzindo o custo de capital para PMEs.
+- [[Fiscal-Compliance-SBT]], [[SME-Lending]]
 
-### 5. Social Identity for AI Agents
-Licenciamento de bots. Agentes de IA precisam de SBTs Zolvency para provar origem humana e responsabilidade financeira perante dApps.
+### 4. The Utility-SBT: Reputação por Recorrência
+- **O que é:** Score de crédito baseado no histórico de pagamento de contas fixas (Luz, Internet, Aluguel).
+- **Impacto:** Inclusão financeira para a população desbancarizada via "Proof-of-Discipline".
+- [[Underbanked-Credit]], [[Discipline-Score]]
 
-### 6. Secondary Market for Receivables
-Um marketplace onde SBTs de Notas Fiscais são negociados. O comprador do SBT tem o direito de receber o valor da nota quando ela for paga na Web2.
+### 5. The Merit-Pass SBT: Capital Humano e Certificações
+- **O que é:** Tokenização de conhecimento técnico (Diplomas, Certificações AWS/CFA/OAB).
+- **Visão:** "Seu conhecimento como garantia". Acesso a linhas de crédito especiais para profissionais liberais.
+- [[Proof-of-Knowledge]], [[Human-Capital-Lending]]
 
-### 7. Global Developer Pass
-Uso do GitHub SBT como passaporte de elegibilidade para contratação internacional trustless e recebimento de grants.
+### 6. The Sovereign-KYC SBT: Passport DeFi Global
+- **O que é:** Reutilização de KYC de instituições Tier-1 (ex: Coinbase) para acesso a Gated Pools.
+- **Privacidade:** O dApp final sabe que o usuário é verificado, mas nunca vê o documento original.
+- [[Universal-KYC-Pass]], [[Gated-DeFi]]
 
-### 8. Green Trust (Créditos de Carbono)
-SBTs que identificam projetos de reflorestamento e atestam sua performance real via dados de IoT (Internet das Coisas).
+### 7. Social Identity for AI Agents (Bot-SBT)
+- **O que é:** Licenciamento e responsabilidade financeira para agentes de IA autônomos.
+- **Necessidade:** Bots precisam provar origem humana e possuir score de reputação para interagir com tesourarias on-chain.
+- [[AI-Agent-Identity]], [[Bot-Governance]]
 
-### 9. Reputation Underwriting (Fiador Web3)
-Usuários com score alto podem "alugar" sua confiança para garantir empréstimos de novos usuários, recebendo uma taxa pelo risco.
+### 8. The Secondary Market for Reputation
+- **O que é:** Marketplace de SBTs de Recebíveis (Notas Fiscais faturadas).
+- **Impacto:** Investidores compram o "direito de recebimento" futuro do usuário, provido via infraestrutura Zolvency.
+- [[Receivables-Exchange]], [[Liquidity-Provider-Pools]]
+
+### 9. Reputation Underwriting: O "Fiador Web3"
+- **O que é:** Usuários "Legend" podem delegar ou empenhar sua reputação para garantir empréstimos de novos usuários.
+- **Mecânica:** O garantidor recebe uma taxa (premium) pelo risco assumido.
+- [[Social-Collateral]], [[Risk-Delegation]]
 
 ### 10. The Trust API for the Web2 Web
-Um plugin de navegador que lê SBTs Zolvency para permitir login em sites Web2 sem senha, usando a reputação como Prova de Humanidade.
+- **O que é:** Plugin de navegador que utiliza o score Zolvency para Login e permissões em sites Web2.
+- **Visão:** Eliminar senhas e usar a reputação acumulada on-chain como prova de humanidade universal.
+- [[Zolvency-Connect]], [[Web2-Trust-Bridge]]
+
+---
+*[[Scaling-Plan]], [[Universal-Reputation]], [[Trust-Aggregation]]*
