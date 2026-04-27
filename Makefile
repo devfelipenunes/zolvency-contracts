@@ -29,6 +29,11 @@ audit-evm:
 	@echo "🔍 Running Slither security audit..."
 	slither packages/evm/ --config-file slither.config.json
 
+.PHONY: audit-rust
+audit-rust:
+	@echo "🔍 Checking Rust dependencies for vulnerabilities..."
+	cargo audit
+
 # Helper para rodar a automação completa
 deploy-testnet: build
 	@echo "🚀 Starting testnet automation..."
