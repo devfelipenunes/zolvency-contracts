@@ -6,6 +6,20 @@
 # Rust/Soroban Build Artifacts
 target/
 **/*.wasm
+Cargo.lock
+
+# Node.js
+node_modules/
+package-lock.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Foundry
+out/
+cache/
+broadcast/
+foundry.lock
 
 # OS Specific
 .DS_Store
@@ -20,3 +34,5 @@ Thumbs.db
 # Project Specific
 *.log
 test_snapshots/
+stellar-cli
+stellar-cli.tar.gz
