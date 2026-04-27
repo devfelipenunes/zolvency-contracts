@@ -161,6 +161,17 @@ pub fn update_token_data(env: &Env, token_id: u64, data: &GithubData) -> Result<
     Ok(())
 }
 
+pub fn extend_token_ttl(env: &Env, token_id: u64) -> Result<(), Error> {
+    let key = (Symbol::new(env, "TOK"), token_id);
+    if !env.storage().persistent().has(&key) {
+        return Err(Error::TokenNotFound);
+    }
+    env.storage()
+        .persistent()
+        .extend_ttl(&key, ONE_YEAR, ONE_YEAR);
+    Ok(())
+}
+
 pub fn set_has_identity(env: &Env, holder: &Address, has: bool) {
     let key = (Symbol::new(env, "HAS"), holder.clone());
     env.storage().persistent().set(&key, &has);

@@ -301,6 +301,11 @@ impl GithubIdentityContract {
         Ok(types::generate_svg(&env, &data))
     }
 
+    pub fn renew_token_ttl(env: Env, token_id: u64) -> Result<(), Error> {
+        // Qualquer um pode chamar, sem require_auth, pois estão pagando a taxa da rede
+        storage::extend_token_ttl(&env, token_id)
+    }
+
     pub fn list_tokens_of_user(env: Env, user: Address) -> Vec<u64> {
         match storage::get_holder_token(&env, &user) {
             Ok(token_id) => Vec::from_array(&env, [token_id]),
