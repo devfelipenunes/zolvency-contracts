@@ -27,6 +27,21 @@ A documentação completa do projeto foi organizada para facilitar a manutençã
 ## 🤖 Para Agentes de IA
 Este repositório inclui uma [Skill de Desenvolvimento Interna](./docs/internal/SKILL.md). Ao trabalhar neste projeto, carregue esta skill para garantir adesão aos padrões arquiteturais e de segurança do Zolvency.
 
+## ⚡ Quick Start
+
+Se você acabou de clonar o repositório, utilize o `Makefile` para preparar o ambiente:
+
+```bash
+# Instalar dependências e compilar contratos
+make build
+
+# Executar a suíte completa de testes
+make test
+
+# Verificar lint e formatação
+make lint && make fmt
+```
+
 ## 🛠️ Como começar
 
 ### Pré-requisitos

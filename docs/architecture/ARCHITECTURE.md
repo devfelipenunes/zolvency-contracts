@@ -24,6 +24,7 @@ All tokens (GitHub-SBT, Bank-SBT, Activity-SBT) implement the `ZolvencyTokenTrai
 pub trait ZolvencyTokenTrait {
     fn get_token_type(env: Env) -> Symbol;      // e.g., "github", "bank"
     fn get_source(env: Env) -> String;         // e.g., "zk-email-dkim"
+    fn get_metadata(env: Env) -> TokenMetadata; // Standard Metadata v6.0
     fn is_valid(env: Env, token_id: u64) -> bool; // Business TTL check
     fn get_expiry(env: Env, token_id: u64) -> u64; // UNIX Timestamp
     fn get_owner_passkey(env: Env, token_id: u64) -> Option<BytesN<65>>; // Optional Passkey binding
@@ -37,7 +38,17 @@ pub trait ZolvencyTokenTrait {
 
 ---
 
-## 3. Modular Interoperability
+## 3. Security Hub (Armor Up)
+The v6.0 architecture includes advanced protection for the reputation economy.
+
+- **Reputation Lock**: Prevents "trust arbitrage" by locking a user's reputation during active credit cycles.
+- **Slashing & Blacklisting**: The Registry can blacklist users based on liquidation proofs, effectively zeroing their reputation score globally.
+- **Two-Step Admin Transfer**: Governance operations use a pending state to prevent accidental loss of control.
+- **ZK-Verifier Hook**: Spokes can delegate identity validation to external ZK-SNARK verifiers for enhanced privacy and security.
+
+---
+
+## 4. Modular Interoperability
 The protocol supports cross-chain reputation export via the **Adapter Pattern**.
 
 - **GithubIdentityContract (Spoke)**: Processes and stores reputation on Stellar.
@@ -57,7 +68,7 @@ The protocol supports cross-chain reputation export via the **Adapter Pattern**.
 | Component | Status | Verification |
 |-----------|--------|--------------|
 | **Zolvency Registry** | ✅ Functional | Integration tests passing |
-| **GitHub Identity** | ✅ Modular | v7.0 Modular Interface |
+| **GitHub Identity** | ✅ Modular | v6.0 Modular Interface |
 | **Axelar Adapter** | ✅ Functional | Validated on Sepolia Testnet |
 | **Authority-Pull** | ✅ Implemented | Unit tests passing |
 | **Sybil Resistance** | ✅ Active | Validated via tests |

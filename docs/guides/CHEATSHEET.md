@@ -2,24 +2,15 @@
 
 Guia rápido de comandos para desenvolvimento, deploy e interação com os contratos do Zolvency Protocol.
 
-## 🛠️ Ambiente de Desenvolvimento
+## 🛠️ Comandos Globais (Makefile)
 
-### Build de Contratos
+Utilize o `Makefile` na raiz para operações padronizadas:
 ```bash
-# Build de todos os contratos em modo release
-cargo build --target wasm32-unknown-unknown --release
-
-# Otimizar WASM (opcional, requer soroban-cli)
-soroban contract optimize --wasm target/wasm32-unknown-unknown/release/github_identity.wasm
-```
-
-### Testes
-```bash
-# Rodar todos os testes unitários
-cargo test
-
-# Rodar testes de um contrato específico
-cargo test -p github-identity
+make build    # Compila todos os contratos (release)
+make test     # Executa todos os testes unitários
+make fmt      # Formata o código Rust
+make lint     # Executa Clippy (linter)
+make clean    # Limpa artefatos de build
 ```
 
 ---
@@ -57,7 +48,8 @@ stellar contract invoke --id <GITHUB_ID> --source admin --network testnet -- \
   --fee_token <XLM_ADDR> \
   --access_control <AC_ADDR> \
   --treasury <TREASURY_ADDR> \
-  --mint_fee 0
+  --mint_fee 0 \
+  --zk_verifier null  # Opcional: Endereço do contrato verificador ZK
 ```
 
 ---

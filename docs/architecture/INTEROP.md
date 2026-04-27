@@ -45,5 +45,6 @@ stellar contract invoke --id <IDENTITY_ID> --source admin --network testnet -- \
 
 
 ## 5. Próximos Passos Recomendados
-- [ ] Implementar o terceiro adaptador: **Authority-Pull** (Assinaturas off-chain) para custo quase zero no Stellar.
+- [x] Implementar o terceiro adaptador: **Authority-Pull** (Assinaturas off-chain) para custo quase zero no Stellar.
 - [ ] Monitorar o **LayerZero Scan** e o **Axelarscan** para validar as provas de entrega.
+- [ ] Implementar adaptador nativo **LayerZero V2** (OApp) para Stellar.
