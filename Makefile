@@ -16,13 +16,17 @@ fmt:
 	@echo "🎨 Formatting code..."
 	cargo fmt --all
 
+.PHONY: lint
 lint:
-	@echo "🔍 Running linter..."
+	@echo "🧹 Running Clippy static analysis..."
 	cargo clippy --all-targets --all-features -- -D warnings
 
 clean:
 	@echo "🧹 Cleaning targets..."
 	cargo clean
+
+.PHONY: audit
+audit: audit-rust audit-evm
 
 .PHONY: audit-evm
 audit-evm:
