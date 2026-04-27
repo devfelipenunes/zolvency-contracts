@@ -1,0 +1,9 @@
+[workspace]
+resolver = "2"
+
+members = [
+    "packages/stellar/contracts/github-identity",
+    "packages/stellar/contracts/zolvency-registry",
+    "packages/stellar/contracts/adapters/axelar",
+    "packages/stellar/contracts/adapters/authority-pull",
+]

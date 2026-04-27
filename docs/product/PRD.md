@@ -1,76 +1,61 @@
-# Product Requirements Document (PRD): Zolvency Protocol v4.0
+# Product Requirements Document (PRD): Zolvency Protocol v6.0
 
-**Versão:** 4.0 (The Trust Settlement Layer)  
-**Status:** Approved Baseline  
+**Versão:** 6.0 (The Universal Trust Hub)  
+**Status:** Strategic Baseline  
 **Data:** 24 de Abril de 2026  
 **Autor:** Gemini CLI & Felipe Nunes  
 
 ---
 
 ## 1. Visão do Produto
-O **Zolvency** é o protocolo de infraestrutura de liquidação de confiança da rede Stellar. Ele transforma o comportamento humano e empresarial em **recurso econômico líquido**, permitindo que a reputação atue como colateral dinâmico, segurável e verificável cross-chain.
+O **Zolvency** é o protocolo de liquidação de confiança e integração RWA da rede Stellar. Ele atua como a ponte definitiva entre o fluxo de caixa Web2 e a liquidez Web3, transformando reputação, renda e ativos físicos em colaterais financeiros programáveis.
 
 ---
 
-## 2. Pilares Estratégicos e Mecânicas de Jogo
+## 2. Verticais de Utilidade e Receita
 
-### 2.1 Reputation Lock (Anti-Arbitrage)
-- **Mecânica:** Travamento instantâneo do score no Hub Registry ao abrir uma posição de crédito. Bloqueia a "fuga de reputação" durante a latência de sincronização cross-chain.
+### 2.1 Web2-to-Web3 Cashflow (Payroll & Invoicing)
+- **Mecânica:** Transformar recebíveis do mundo real (Notas Fiscais, Holerites, PIX) em SBTs de Crédito Antecipável. O Zolvency valida a veracidade do documento via ZK-Email e libera o score para antecipação de liquidez em USDC.
 
-### 2.2 Reputation Decay (Prova de Vida)
-- **Mecânica:** SBTs possuem um fator de decaimento logarítmico. A ausência de novas provas (ex: 90 dias sem commit ou 30 dias sem renda) reduz o score automaticamente em 10% ao mês.
+### 2.2 RWA Provenance (Asset SBTs)
+- **Mecânica:** Identidade digital para ativos físicos (Imóveis, Máquinas, Créditos de Carbono). O SBT rastreia o ciclo de vida e a performance do ativo, permitindo que investidores comprem "shares" de RWA com confiança auditada on-chain.
 
-### 2.3 Staked Reputation (Skin in the Game)
-- **Mecânica:** Usuários podem fazer stake de ativos (XLM, USDC) sobre seu SBT. 
-- **Tier Ultra-Premium:** Apenas para usuários com Passkey + Staked Collateral. Este tier oferece os maiores multiplicadores de LTV do mercado.
-
-### 2.4 Slashing Algorítmico e Adjudicação
-- **Mecânica:** O "blacklisting" global é acionado por provas de liquidação on-chain. Contestações são resolvidas via Adjudicators autorizados (DAOs ou Oráculos de Justiça).
+### 2.3 Institutional Gateway (Compliance Pass)
+- **Mecânica:** Camada de conformidade para instituições. SBTs que atestam status de "Investidor Qualificado" e "KYC Bancário", permitindo a criação de Pools de DeFi Permissionadas (Gated-DeFi).
 
 ---
 
-## 3. Requisitos Funcionais
+## 3. Pilares de Engenharia Econômica
 
-### 3.1 Hub Registry (O Cérebro)
-- **Lock & Decay Engine**: Gerencia o estado de travamento e o cálculo de expiração dinâmica.
-- **Unified Query API**: Retorna o score líquido (Score Base - Decay + Stake Bonus).
+### 3.1 Reputation & Asset Locks
+- Travamento instantâneo de reputação ou direitos sobre ativos ao abrir linhas de crédito, eliminando o risco de gasto duplo (double-spending) de confiança entre chains.
 
-### 3.2 Spoke Contracts (As Fontes)
-- **GitHub SBT**: Validação técnica e autoridade de código.
-- **Bank-SBT**: Focado em fluxo de caixa (PIX/Open Banking).
-- **Merchant-SBT (PJ)**: Validação de volume de vendas para pequenas empresas através de provas de APIs de pagamento.
-
-### 3.3 Interoperabilidade
-- **Zolvency Verification API (ZVA)**: Protocolo de consulta para contratos EVM validarem locks ativos e tiers de confiança.
+### 3.2 Dynamic Underwriting (The Scoring Engine)
+- Algoritmo que combina:
+    - **Score de Atividade (GitHub/Social)**
+    - **Score de Fluxo (Renda/Vendas Web2)**
+    - **Score de Lastro (Stake/RWA)**
 
 ---
 
-## 4. Modelos de Monetização (Revenue Streams)
+## 4. Modelos de Monetização de Alta Performance
 
-1.  **VaaS (Verification-as-a-Service)**: Taxa por consulta de eligibilidade (paga pelo protocolo de Lending).
-2.  **Staking Yield Spread**: Uma pequena fração do rendimento de ativos em stake sobre reputação retorna ao tesouro do protocolo.
-3.  **Sync & Adjudication Fees**: Taxas por sincronização cross-chain e resolução de disputas de inadimplência.
-4.  **Verification Badges**: Taxas de auditoria para novos Spokes entrarem no "Registry Curated List".
+1.  **Origination Spread:** Taxa sobre o volume de crédito antecipado via SBTs de recebíveis.
+2.  **Asset Audit Fee:** Cobrança por atualização de performance de ativos RWA on-chain.
+3.  **Institutional Access:** Assinatura B2B para protocolos que operam apenas com usuários "Zolvency Verified".
+4.  **Verification-as-a-Service (VaaS):** Taxas por consulta de eligibilidade cross-chain.
 
 ---
 
 ## 5. Roadmap Estratégico
 
 ### Q2 2026: Infraestrutura Core
-- [ ] Implementação do **Reputation Lock** e **Decay Logic** no Registry.
-- [ ] Lançamento do Dashboard de Metadados para Agentes de IA.
+- Finalização do Registry com suporte a **Multi-Asset Metadata** e **Reputation Locks**.
 
-### Q3 2026: Piloto Financeiro (MEI/Devs)
-- [ ] **Bank-SBT** (PIX Proofs).
-- [ ] Parceria com protocolo de Lending para "Empréstimo por Reputação".
+### Q3 2026: O Salto Web2 (Recebíveis)
+- Lançamento do **Bank-SBT** (Renda PIX) e **Invoice-SBT** (Notas Fiscais via ZK).
+- Primeiro piloto de antecipação de recebíveis para Freelancers.
 
-### Q4 2026: Social & Governance
-- [ ] **Staking Module**: Lançamento da camada de seguro sobre reputação.
-- [ ] Migração para governança descentralizada (Zolvency DAO).
-
----
-
-## 6. Métricas de Sucesso
-- **Capital Efficiency**: Redução média de 20% na exigência de colateral real para usuários Zolvency Premium.
-- **Reputation Freshness**: Intervalo médio de atualização de SBTs inferior a 45 dias.
-- **Corporate Adoption**: Primeiro Spoke de faturamento PJ (CNPJ) operacional.
+### Q4 2026: RWA & Institucional
+- Lançamento do **Asset-SBT** para ativos físicos.
+- Integração com o primeiro grande Player de RWA da Stellar.

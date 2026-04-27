@@ -1,0 +1,14 @@
+@axelar-network/=node_modules/@axelar-network/
+axelar-gmp-sdk-solidity/=lib/axelar-gmp-sdk-solidity/contracts/
+devtools/=lib/devtools/packages/toolbox-foundry/src/
+ds-test/=lib/layerzero-v2/lib/forge-std/lib/ds-test/src/
+forge-std/=lib/forge-std/src/
+hardhat/=node_modules/hardhat/
+layerzero-v2/=lib/layerzero-v2/
+@layerzerolabs/oapp-evm/=lib/layerzero-v2/packages/layerzero-v2/evm/oapp/
+@layerzerolabs/oapp-evm-upgradeable/=lib/layerzero-v2/packages/layerzero-v2/evm/oapp-upgradeable/
+@layerzerolabs/lz-evm-protocol-v2/=lib/layerzero-v2/packages/layerzero-v2/evm/protocol/
+@layerzerolabs/lz-evm-messagelib-v2/=lib/layerzero-v2/packages/layerzero-v2/evm/messagelib/
+@layerzerolabs/lz-evm-v1-0.7/=lib/layerzero-v2/packages/layerzero-v2/evm/v1-0.7/
+@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
+solidity-bytes-utils/=lib/solidity-bytes-utils/

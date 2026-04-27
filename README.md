@@ -11,7 +11,12 @@ A documentação completa do projeto foi organizada para facilitar a manutençã
 - **[Interoperabilidade](./docs/architecture/INTEROP.md)**: Detalhes sobre o sistema de mensagens cross-chain.
 
 ### 🚀 [Produto](./docs/product/)
-- **[PRD - Product Requirements Document](./docs/product/PRD.md)**: Visão, objetivos e roadmap do protocolo.
+- **[PRD - Product Requirements Document](./docs/product/PRD.md)**: Visão v6.0 do Trust Hub e integração RWA.
+- **[Horizontes Futuros](./docs/product/FUTURE_HORIZONS.md)**: 10 direções estratégicas de alta rentabilidade (Web2-to-Web3).
+- **[Modelo Econômico](./docs/product/ECONOMY.md)**: Tokenomics de spread e taxas B2B.
+- **[Personas e Jornadas](./docs/product/PERSONAS.md)**: Mapa de usuários, RWA Issuers e IAs.
+- **[Matriz de Riscos](./docs/product/RISK_MATRIX.md)**: Segurança e planos de mitigação.
+- **[Estratégia de Mercado (GTM)](./docs/product/GTM_STRATEGY.md)**: Roadmap de adoção e crescimento.
 
 ### 📚 [Guias e Specs](./docs/)
 - **[Comandos Úteis (Cheatsheet)](./docs/guides/CHEATSHEET.md)**: Guia rápido de Soroban CLI e deploy.

@@ -1,5 +1,8 @@
 #![no_std]
-use soroban_sdk::{contract, contractimpl, contracttype, Address, Bytes, Env, String, Symbol, IntoVal, xdr::ToXdr, Val, Error};
+use soroban_sdk::{
+    contract, contractimpl, contracttype, xdr::ToXdr, Address, Bytes, Env, Error, IntoVal, String,
+    Symbol, Val,
+};
 
 #[contracttype]
 #[derive(Clone, Debug)]
@@ -33,7 +36,9 @@ impl AxelarAdapter {
         }
         env.storage().instance().set(&DataKey::Admin, &admin);
         env.storage().instance().set(&DataKey::Gateway, &gateway);
-        env.storage().instance().set(&DataKey::GasService, &gas_service);
+        env.storage()
+            .instance()
+            .set(&DataKey::GasService, &gas_service);
         env.storage().instance().set(&DataKey::GasToken, &gas_token);
     }
 
@@ -62,7 +67,7 @@ impl AxelarAdapter {
         // 2. Pagamento de Gás (Axelar Gas Service)
         let gas_token = AxelarGasToken {
             address: gas_token_addr,
-            amount: 15_000_000i128
+            amount: 15_000_000i128,
         };
 
         let _: Val = env.invoke_contract(
@@ -75,8 +80,9 @@ impl AxelarAdapter {
                 payload.clone(),
                 caller,
                 gas_token,
-                Bytes::new(&env)
-            ).into_val(&env)
+                Bytes::new(&env),
+            )
+                .into_val(&env),
         );
 
         // 3. Chamada do Gateway
@@ -87,8 +93,9 @@ impl AxelarAdapter {
                 env.current_contract_address(),
                 destination_chain,
                 destination_address,
-                payload
-            ).into_val(&env)
+                payload,
+            )
+                .into_val(&env),
         );
 
         Ok(())
@@ -98,15 +105,15 @@ impl AxelarAdapter {
         let mut payload = Bytes::new(env);
         let external_id_hash = env.crypto().keccak256(&external_id.clone().to_xdr(env));
         payload.append(&external_id_hash.into());
-        
+
         let mut tier_bytes = [0u8; 32];
         tier_bytes[31] = tier;
         payload.append(&Bytes::from_array(env, &tier_bytes));
-        
+
         let mut user_bytes = [0u8; 32];
         user.copy_into_slice(&mut user_bytes[12..32]);
         payload.append(&Bytes::from_array(env, &user_bytes));
-        
+
         payload
     }
 }

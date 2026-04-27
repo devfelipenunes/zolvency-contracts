@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@noble/curves": "^2.2.0",
+    "@stellar/stellar-sdk": "^15.0.1"
+  }
+}

@@ -1,7 +1,7 @@
 #![cfg(test)]
 
 use super::*;
-use soroban_sdk::{testutils::Address as _, Address, Bytes, BytesN, Env, String, Symbol, IntoVal};
+use soroban_sdk::{testutils::Address as _, Address, Bytes, BytesN, Env, String, Symbol};
 
 // Importamos o contrato de identidade para usar no teste
 mod github_contract {
@@ -28,12 +28,12 @@ fn test_registry_integration_with_github_token() {
     let github_client = github_contract::Client::new(&env, &github_id);
 
     github_client.initialize(
-        &admin, 
+        &admin,
         &Address::generate(&env), // registry
         &Address::generate(&env), // fee_token
         &Address::generate(&env), // access_control
         &Address::generate(&env), // treasury
-        &0 // mint_fee
+        &0,                       // mint_fee
     );
 
     // 3. Registrar o token no Registry
@@ -46,7 +46,7 @@ fn test_registry_integration_with_github_token() {
     let params = github_contract::MintParams {
         username: String::from_str(&env, "devfelipenunes"),
         external_id: String::from_str(&env, "gh_123"),
-        passkey: None, // Alterado para None
+        passkey: None,           // Alterado para None
         passkey_signature: None, // Alterado para None
         contributions: 1500u32,
         proof_data: Bytes::new(&env),
@@ -61,7 +61,7 @@ fn test_registry_integration_with_github_token() {
     // Verificações
     assert!(reputation.contains_key(Symbol::new(&env, "github")));
     assert_eq!(reputation.get(Symbol::new(&env, "github")), Some(1u64));
-    
+
     // Testar usuário sem token
     let ghost_user = Address::generate(&env);
     let empty_reputation = registry_client.get_user_reputation(&ghost_user);

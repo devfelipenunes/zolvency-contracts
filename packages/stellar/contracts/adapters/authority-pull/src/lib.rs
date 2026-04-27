@@ -1,5 +1,5 @@
 #![no_std]
-use soroban_sdk::{contract, contractimpl, Address, Bytes, Env, String, Symbol, Error};
+use soroban_sdk::{contract, contractimpl, Address, Bytes, Env, Error, String, Symbol};
 
 #[contract]
 pub struct AuthorityPullAdapter;
@@ -25,7 +25,13 @@ impl AuthorityPullAdapter {
 
         env.events().publish(
             (Symbol::new(&env, "reputation_export"), caller),
-            (destination_chain, destination_address, external_id, tier, user_evm_address)
+            (
+                destination_chain,
+                destination_address,
+                external_id,
+                tier,
+                user_evm_address,
+            ),
         );
 
         Ok(())

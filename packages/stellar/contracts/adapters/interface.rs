@@ -1,0 +1,19 @@
+#![no_std]
+use soroban_sdk::{contractclient, Address, Bytes, Env, String};
+
+#[contractclient(name = "MessengerClient")]
+pub trait MessengerTrait {
+    /// Estima a taxa necessária para o envio cross-chain.
+    fn estimate_fee(env: Env, destination_chain: String) -> i128;
+
+    /// Envia a reputação para outra cadeia.
+    fn send(
+        env: Env,
+        caller: Address,
+        destination_chain: String,
+        destination_address: String,
+        external_id: String,
+        tier: u8,
+        user_evm_address: Bytes,
+    ) -> Result<(), u32>;
+}
