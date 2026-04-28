@@ -3,7 +3,20 @@ resolver = "2"
 
 members = [
     "packages/stellar/contracts/github-identity",
+    "packages/stellar/contracts/income-bank",
+    "packages/stellar/contracts/binance-kyc",
+    "packages/stellar/contracts/uber-income",
     "packages/stellar/contracts/zolvency-registry",
     "packages/stellar/contracts/adapters/axelar",
     "packages/stellar/contracts/adapters/authority-pull",
 ]
+
+[profile.release]
+opt-level = "z"
+overflow-checks = true
+debug = 0
+strip = "symbols"
+debug-assertions = false
+panic = "abort"
+codegen-units = 1
+lto = true

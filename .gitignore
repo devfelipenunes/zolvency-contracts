@@ -36,3 +36,4 @@ Thumbs.db
 test_snapshots/
 stellar-cli
 stellar-cli.tar.gz
+.worktrees/

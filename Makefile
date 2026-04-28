@@ -6,7 +6,7 @@ WASM_REGISTRY=packages/stellar/contracts/zolvency-registry/target/wasm32-unknown
 
 build:
 	@echo "🔨 Building contracts..."
-	cargo build --target wasm32-unknown-unknown --release
+	RUSTFLAGS="-C target-feature=-sign-ext -C target-feature=-mutable-globals -C target-feature=-reference-types -C target-feature=-bulk-memory" stellar contract build
 
 test:
 	@echo "🧪 Running tests..."

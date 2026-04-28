@@ -18,7 +18,7 @@ echo "🌟 Starting Testnet Deployment..."
 # 1. Deploy Zolvency Registry
 if [ -z "$ZOLVENCY_REGISTRY_ID" ]; then
     echo "📦 Deploying Zolvency Registry..."
-    REGISTRY_WASM="packages/stellar/contracts/zolvency-registry/target/wasm32-unknown-unknown/release/zolvency_registry.wasm"
+    REGISTRY_WASM="target/wasm32-unknown-unknown/release/zolvency_registry.wasm"
     REGISTRY_ID=$($STELLAR_CLI contract deploy \
         --wasm "$REGISTRY_WASM" \
         --source "$DEPLOYER_SECRET" \
@@ -32,7 +32,7 @@ fi
 # 2. Deploy Github Identity
 if [ -z "$GITHUB_IDENTITY_ID" ]; then
     echo "🆔 Deploying Github Identity..."
-    IDENTITY_WASM="packages/stellar/contracts/github-identity/target/wasm32-unknown-unknown/release/github_identity.wasm"
+    IDENTITY_WASM="target/wasm32-unknown-unknown/release/github_identity.wasm"
     IDENTITY_ID=$($STELLAR_CLI contract deploy \
         --wasm "$IDENTITY_WASM" \
         --source "$DEPLOYER_SECRET" \
