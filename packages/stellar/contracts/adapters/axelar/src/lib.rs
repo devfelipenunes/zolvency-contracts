@@ -22,6 +22,13 @@ pub enum DataKey {
 #[contract]
 pub struct AxelarAdapter;
 
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[repr(u32)]
+pub enum Error {
+    NotInitialized = 1,
+}
+
 #[contractimpl]
 impl AxelarAdapter {
     pub fn initialize(
@@ -32,7 +39,7 @@ impl AxelarAdapter {
         gas_token: Address,
     ) {
         if env.storage().instance().has(&DataKey::Admin) {
-            panic!("Already initialized");
+            return;
         }
         env.storage().instance().set(&DataKey::Admin, &admin);
         env.storage().instance().set(&DataKey::Gateway, &gateway);
@@ -54,15 +61,16 @@ impl AxelarAdapter {
         external_id: String,
         tier: u32,
         user_evm_address: Bytes,
+        nonce: u64,
     ) -> Result<(), Error> {
         caller.require_auth();
 
-        let gateway: Address = env.storage().instance().get(&DataKey::Gateway).unwrap();
-        let gas_service: Address = env.storage().instance().get(&DataKey::GasService).unwrap();
-        let gas_token_addr: Address = env.storage().instance().get(&DataKey::GasToken).unwrap();
+        let gateway: Address = env.storage().instance().get(&DataKey::Gateway).ok_or(Error::NotInitialized)?;
+        let gas_service: Address = env.storage().instance().get(&DataKey::GasService).ok_or(Error::NotInitialized)?;
+        let gas_token_addr: Address = env.storage().instance().get(&DataKey::GasToken).ok_or(Error::NotInitialized)?;
 
-        // 1. Codificação do Payload
-        let payload = Self::encode_evm_payload(&env, &external_id, tier as u8, &user_evm_address);
+        // 1. Codificação do Payload (Adicionado Nonce)
+        let payload = Self::encode_evm_payload(&env, &external_id, tier as u8, &user_evm_address, nonce);
 
         // 2. Pagamento de Gás (Axelar Gas Service)
         let gas_token = AxelarGasToken {
@@ -101,18 +109,28 @@ impl AxelarAdapter {
         Ok(())
     }
 
-    fn encode_evm_payload(env: &Env, external_id: &String, tier: u8, user: &Bytes) -> Bytes {
+    fn encode_evm_payload(env: &Env, external_id: &String, tier: u8, user: &Bytes, nonce: u64) -> Bytes {
         let mut payload = Bytes::new(env);
+        
+        // 1. External ID (32 bytes)
         let external_id_hash = env.crypto().keccak256(&external_id.clone().to_xdr(env));
         payload.append(&external_id_hash.into());
 
+        // 2. Tier (32 bytes - ABI standard padding)
         let mut tier_bytes = [0u8; 32];
         tier_bytes[31] = tier;
         payload.append(&Bytes::from_array(env, &tier_bytes));
 
+        // 3. User Address (32 bytes - ABI standard padding for address)
         let mut user_bytes = [0u8; 32];
         user.copy_into_slice(&mut user_bytes[12..32]);
         payload.append(&Bytes::from_array(env, &user_bytes));
+
+        // 4. Nonce (32 bytes - ABI standard padding for uint64)
+        let mut nonce_bytes = [0u8; 32];
+        let n_be = nonce.to_be_bytes();
+        nonce_bytes[24..32].copy_from_slice(&n_be);
+        payload.append(&Bytes::from_array(env, &nonce_bytes));
 
         payload
     }
