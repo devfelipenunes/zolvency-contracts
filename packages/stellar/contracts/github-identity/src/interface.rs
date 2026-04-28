@@ -1,4 +1,4 @@
-use soroban_sdk::{BytesN, Env, String, Symbol};
+use soroban_sdk::{Bytes, Env, String, Symbol};
 
 use crate::types::TokenMetadata;
 
@@ -19,5 +19,5 @@ pub trait ZolvencyTokenTrait {
     fn get_expiry(env: Env, token_id: u64) -> u64;
 
     /// Retorna a chave pública da Passkey vinculada (secp256r1)
-    fn get_owner_passkey(env: Env, token_id: u64) -> Option<BytesN<65>>; // Retorno alterado para Option
+    fn get_owner_passkey(env: Env, token_id: u64) -> Bytes;
 }

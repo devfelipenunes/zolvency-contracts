@@ -15,5 +15,6 @@ pub trait MessengerTrait {
         external_id: String,
         tier: u32,
         user_evm_address: Bytes,
+        nonce: u64, // Adicionado para proteção contra Replay no EVM
     ) -> Result<(), Error>;
 }

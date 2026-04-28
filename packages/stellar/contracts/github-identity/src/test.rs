@@ -303,9 +303,10 @@ fn test_update_token_refreshes_expiry() {
     ctx.client.update_token(
         &user,
         &token_id,
-        &String::from_str(&ctx.env, "user1"),
-        &2000u32,
+        &String::from_str(&ctx.env, "new_name"),
+        &2000,
         &Bytes::new(&ctx.env),
+        &1u64,
         &None,
     );
 
@@ -348,6 +349,7 @@ impl MockAdapter {
         _external_id: String,
         _tier: u32,
         _user_evm_address: Bytes,
+        _nonce: u64,
     ) -> Result<(), crate::types::Error> {
         env.events().publish(
             (Symbol::new(&env, "adapter_send"),),
@@ -357,6 +359,7 @@ impl MockAdapter {
                 _external_id,
                 _tier,
                 _user_evm_address,
+                _nonce,
             ),
         );
         Ok(())

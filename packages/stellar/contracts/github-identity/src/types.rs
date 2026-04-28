@@ -24,7 +24,6 @@ pub enum Error {
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[allow(clippy::enum_variant_names)]
 pub enum DataKey {
     AxelarConfig,
     LayerZeroConfig,
@@ -47,78 +46,32 @@ pub struct LayerZeroConfig {
 
 #[contracttype]
 #[derive(Clone, Debug)]
-pub struct AxelarGasToken {
-    pub address: Address,
-    pub amount: i128,
-}
-
-#[contracttype]
-#[derive(Clone, Debug)]
-pub struct MessagingFee {
-    pub native_fee: i128,
-    pub lz_token_fee: i128,
-}
-
-#[contracttype]
-#[derive(Clone, Debug)]
-pub struct MessagingReceipt {
-    pub guid: BytesN<32>,
-    pub nonce: u64,
-    pub fee: MessagingFee,
-}
-
-#[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum InteropProtocol {
-    None,
-    Axelar,
-    LayerZero,
-    Wormhole,
-}
-
-#[contracttype]
-#[derive(Clone, Debug)]
-pub struct InteropConfig {
-    pub active_protocol: InteropProtocol,
-    pub adapter_address: Address,
-}
-
-#[contracttype]
-#[derive(Clone, Debug)]
-pub struct CrossChainParams {
-    pub destination_chain: String,
-    pub destination_address: String,
-    pub user_destination_address: Bytes,
-}
-
-#[contracttype]
-#[derive(Clone, Debug)]
 pub struct MintParams {
-    pub username: String,
-    pub external_id: String,
-    pub passkey: Option<BytesN<65>>,           // Alterado para Option
-    pub passkey_signature: Option<BytesN<64>>, // Alterado para Option
     pub contributions: u32,
-    pub proof_data: Bytes,
+    pub external_id: String,
     pub nonce: u64,
+    pub passkey: Bytes,
+    pub passkey_signature: Bytes,
+    pub proof_data: Bytes,
+    pub username: String,
 }
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct GithubData {
-    pub username: String,
-    pub external_id: String,
     pub contributions: u32,
-    pub tier: Tier,
-    pub minted_at: u64,
-    pub updated_at: u64,
     pub expires_at: u64,
+    pub external_id: String,
+    pub minted_at: u64,
+    pub passkey: Bytes,
     pub proof_data: Bytes,
-    pub passkey: Option<BytesN<65>>, // Alterado para Option
+    pub tier: Tier,
+    pub updated_at: u64,
+    pub username: String,
 }
 
 #[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 pub enum Tier {
     Novice,
     Pro,
@@ -147,56 +100,49 @@ impl Tier {
             Tier::Singularity => 5,
         }
     }
-
-    pub fn to_string(&self, env: &Env) -> String {
-        match self {
-            Tier::Novice => String::from_str(env, "Novice"),
-            Tier::Pro => String::from_str(env, "Pro"),
-            Tier::Architect => String::from_str(env, "Architect"),
-            Tier::Legend => String::from_str(env, "Legend"),
-            Tier::Singularity => String::from_str(env, "Singularity"),
-        }
-    }
-
-    pub fn to_color(&self, env: &Env) -> String {
-        match self {
-            Tier::Novice => String::from_str(env, "#CD7F32"),
-            Tier::Pro => String::from_str(env, "#C0C0C0"),
-            Tier::Architect => String::from_str(env, "#FFD700"),
-            Tier::Legend => String::from_str(env, "#E5E4E2"),
-            Tier::Singularity => String::from_str(env, "#39FF14"),
-        }
-    }
 }
 
 #[contracttype]
 #[derive(Clone)]
 pub struct Config {
-    pub admin: soroban_sdk::Address,
-    pub registry: soroban_sdk::Address,
-    pub fee_token: soroban_sdk::Address, // Novo: token usado para pagamento (ex: XLM)
-    pub access_control: soroban_sdk::Address,
-    pub treasury: soroban_sdk::Address,
+    pub admin: Address,
+    pub registry: Address,
+    pub fee_token: Address,
+    pub access_control: Address,
+    pub treasury: Address,
     pub mint_fee: i128,
-    pub zk_verifier: Option<soroban_sdk::Address>,
+    pub zk_verifier: Option<Address>,
+}
+
+#[contracttype]
+#[derive(Clone, Debug)]
+pub struct InteropConfig {
+    pub active_protocol: InteropProtocol,
+    pub adapter_address: Address,
 }
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub enum InteropProtocol {
+    None,
+    Axelar,
+    LayerZero,
+    Wormhole,
+}
+
+#[contracttype]
+#[derive(Clone, Debug)]
+pub struct CrossChainParams {
+    pub destination_chain: String,
+    pub destination_address: String,
+    pub user_destination_address: Bytes,
+}
+
+#[contracttype]
+#[derive(Clone, Debug)]
 pub struct TokenMetadata {
     pub name: String,
     pub symbol: String,
     pub version: String,
     pub data_source: String,
-}
-
-pub fn generate_svg(env: &Env, data: &GithubData) -> String {
-    let svg = match data.tier {
-        Tier::Novice => "<svg xmlns='http://www.w3.org/2000/svg' width='350' height='200'><rect width='100%' height='100%' fill='#b0c4de'/><text x='50%' y='100' font-size='24' fill='#181c2f' text-anchor='middle'>Novice</text></svg>",
-        Tier::Pro => "<svg xmlns='http://www.w3.org/2000/svg' width='350' height='200'><rect width='100%' height='100%' fill='#90ee90'/><text x='50%' y='100' font-size='24' fill='#181c2f' text-anchor='middle'>Pro</text></svg>",
-        Tier::Architect => "<svg xmlns='http://www.w3.org/2000/svg' width='350' height='200'><rect width='100%' height='100%' fill='#ffd700'/><text x='50%' y='100' font-size='24' fill='#181c2f' text-anchor='middle'>Architect</text></svg>",
-        Tier::Legend => "<svg xmlns='http://www.w3.org/2000/svg' width='350' height='200'><rect width='100%' height='100%' fill='#ff8c00'/><text x='50%' y='100' font-size='24' fill='#fff' text-anchor='middle'>Legend</text></svg>",
-        Tier::Singularity => "<svg xmlns='http://www.w3.org/2000/svg' width='350' height='200'><rect width='100%' height='100%' fill='#8a2be2'/><text x='50%' y='100' font-size='24' fill='#fff' text-anchor='middle'>Singularity</text></svg>",
-    };
-    String::from_str(env, svg)
 }
