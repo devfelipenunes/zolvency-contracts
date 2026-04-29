@@ -64,33 +64,25 @@ impl ZolvencyTokenTrait for UberIncomeContract {
 impl UberIncomeContract {
     pub fn initialize(
         env: Env,
-        admin: Address,
-        registry: Address,
-        fee_token: Address,
-        access_control: Address,
-        treasury: Address,
-        mint_fee_30: i128,
-        mint_fee_60: i128,
-        mint_fee_90: i128,
-        max_proof_age_seconds: u64,
-        store_proof_data: bool,
+        params: types::InitializeParams,
     ) -> Result<(), Error> {
         if storage::get_config(&env).is_ok() {
             return Err(Error::AlreadyInitialized);
         }
 
         let config = types::Config {
-            admin,
-            registry,
-            fee_token,
-            access_control,
-            treasury,
-            mint_fee_30,
-            mint_fee_60,
-            mint_fee_90,
-            max_proof_age_seconds,
+            admin: params.admin,
+            registry: params.registry,
+            soul_contract: params.soul_contract,
+            fee_token: params.fee_token,
+            access_control: params.access_control,
+            treasury: params.treasury,
+            mint_fee_30: params.mint_fee_30,
+            mint_fee_60: params.mint_fee_60,
+            mint_fee_90: params.mint_fee_90,
+            max_proof_age_seconds: params.max_proof_age_seconds,
             zk_verifier: None,
-            store_proof_data,
+            store_proof_data: params.store_proof_data,
         };
 
         storage::set_config(&env, &config);
@@ -209,6 +201,19 @@ impl UberIncomeContract {
     ) -> Result<u64, Error> {
         admin.require_auth();
         Self::assert_admin(&env, &admin)?;
+
+        // ── Gating: Soul Check ──
+        let config = storage::get_config(&env)?;
+        let res = env.try_invoke_contract::<u32, soroban_sdk::Error>(
+            &config.soul_contract,
+            &Symbol::new(&env, "balance"),
+            soroban_sdk::vec![&env, params.recipient.clone().into_val(&env)],
+        );
+
+        match res {
+            Ok(Ok(balance)) if balance > 0 => { /* Soul detected, proceed */ }
+            _ => panic!("Unauthorized: No Soul Token detected. Please login via Passkey."),
+        }
 
         if params.external_id.is_empty() || params.external_id.len() > 64 {
             return Err(Error::InvalidExternalId);

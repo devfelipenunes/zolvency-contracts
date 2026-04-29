@@ -154,9 +154,26 @@ pub struct UberIncomeData {
 
 #[contracttype]
 #[derive(Clone)]
+pub struct InitializeParams {
+    pub admin: Address,
+    pub registry: Address,
+    pub soul_contract: Address,
+    pub fee_token: Address,
+    pub access_control: Address,
+    pub treasury: Address,
+    pub mint_fee_30: i128,
+    pub mint_fee_60: i128,
+    pub mint_fee_90: i128,
+    pub max_proof_age_seconds: u64,
+    pub store_proof_data: bool,
+}
+
+#[contracttype]
+#[derive(Clone)]
 pub struct Config {
     pub admin: Address,
     pub registry: Address,
+    pub soul_contract: Address,
     pub fee_token: Address,
     pub access_control: Address,
     pub treasury: Address,
