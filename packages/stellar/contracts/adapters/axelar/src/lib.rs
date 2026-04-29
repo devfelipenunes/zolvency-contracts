@@ -1,7 +1,7 @@
 #![no_std]
 use soroban_sdk::{
-    contract, contractimpl, contracttype, xdr::ToXdr, Address, Bytes, Env, Error, IntoVal, String,
-    Symbol, Val,
+    contract, contracterror, contractimpl, contracttype, xdr::ToXdr, Address, Bytes, Env, IntoVal,
+    String, Symbol, Val,
 };
 
 #[contracttype]
@@ -17,6 +17,7 @@ pub enum DataKey {
     GasService,
     GasToken,
     Admin,
+    SoulContract,
 }
 
 #[contract]
@@ -34,6 +35,7 @@ impl AxelarAdapter {
     pub fn initialize(
         env: Env,
         admin: Address,
+        soul_contract: Address,
         gateway: Address,
         gas_service: Address,
         gas_token: Address,
@@ -42,6 +44,7 @@ impl AxelarAdapter {
             return;
         }
         env.storage().instance().set(&DataKey::Admin, &admin);
+        env.storage().instance().set(&DataKey::SoulContract, &soul_contract);
         env.storage().instance().set(&DataKey::Gateway, &gateway);
         env.storage()
             .instance()
@@ -64,6 +67,19 @@ impl AxelarAdapter {
         nonce: u64,
     ) -> Result<(), Error> {
         caller.require_auth();
+
+        // ── Gating: Soul Check ──
+        let soul_contract: Address = env.storage().instance().get(&DataKey::SoulContract).ok_or(Error::NotInitialized)?;
+        let res = env.try_invoke_contract::<u32, soroban_sdk::Error>(
+            &soul_contract,
+            &Symbol::new(&env, "balance"),
+            soroban_sdk::vec![&env, caller.clone().into_val(&env)],
+        );
+
+        match res {
+            Ok(Ok(balance)) if balance > 0 => { /* Soul detected, proceed */ }
+            _ => panic!("Unauthorized: No Soul Token detected. Please login via Passkey."),
+        }
 
         let gateway: Address = env.storage().instance().get(&DataKey::Gateway).ok_or(Error::NotInitialized)?;
         let gas_service: Address = env.storage().instance().get(&DataKey::GasService).ok_or(Error::NotInitialized)?;
