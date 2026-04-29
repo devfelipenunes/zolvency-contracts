@@ -9,7 +9,7 @@ mod types;
 mod test;
 
 use soroban_sdk::{
-    contract, contractimpl, Address, Bytes, BytesN, Env, String, Symbol,
+    contract, contractimpl, Address, Bytes, BytesN, Env, IntoVal, String, Symbol,
 };
 
 pub use interface::ZolvencyTokenTrait;
@@ -66,6 +66,7 @@ impl GithubIdentityContract {
         env: Env,
         admin: Address,
         registry: Address,
+        soul_contract: Address,
         fee_token: Address,
         access_control: Address,
         treasury: Address,
@@ -78,6 +79,7 @@ impl GithubIdentityContract {
         let config = types::Config {
             admin,
             registry,
+            soul_contract,
             fee_token,
             access_control,
             treasury,
@@ -97,6 +99,19 @@ impl GithubIdentityContract {
         params: MintParams,
     ) -> u64 {
         caller.require_auth();
+
+        // ── Gating: Soul Check ──
+        let config = storage::get_config(&env).unwrap();
+        let res = env.try_invoke_contract::<u32, soroban_sdk::Error>(
+            &config.soul_contract,
+            &Symbol::new(&env, "balance"),
+            soroban_sdk::vec![&env, user.clone().into_val(&env)],
+        );
+
+        match res {
+            Ok(Ok(balance)) if balance > 0 => { /* Soul detected, proceed */ }
+            _ => panic!("Unauthorized: No Soul Token detected. Please login via Passkey."),
+        }
 
         let token_id = storage::get_next_token_id(&env);
         storage::increment_token_counter(&env);

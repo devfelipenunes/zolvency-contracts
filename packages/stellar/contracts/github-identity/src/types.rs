@@ -107,6 +107,7 @@ impl Tier {
 pub struct Config {
     pub admin: Address,
     pub registry: Address,
+    pub soul_contract: Address,
     pub fee_token: Address,
     pub access_control: Address,
     pub treasury: Address,
