@@ -7,6 +7,7 @@ members = [
     "packages/stellar/contracts/binance-kyc",
     "packages/stellar/contracts/uber-income",
     "packages/stellar/contracts/zolvency-registry",
+    "packages/stellar/contracts/zolvency-soul",
     "packages/stellar/contracts/adapters/axelar",
     "packages/stellar/contracts/adapters/authority-pull",
 ]
