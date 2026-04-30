@@ -25,23 +25,24 @@ pub enum Error {
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DataKey {
-    AxelarConfig,
-    LayerZeroConfig,
-    InteropConfig,
+    Config,
 }
 
 #[contracttype]
-#[derive(Clone, Debug)]
-pub struct AxelarConfig {
-    pub gateway: Address,
-    pub gas_service: Address,
-    pub gas_token: Address,
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ClaimInfo {
+    pub provider: String,
+    pub parameters: String,
+    pub context: String,
 }
 
 #[contracttype]
-#[derive(Clone, Debug)]
-pub struct LayerZeroConfig {
-    pub endpoint: Address,
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ReclaimProof {
+    pub claim_info: ClaimInfo,
+    pub signed_claim: BytesN<32>,
+    pub signatures: soroban_sdk::Vec<BytesN<64>>,
+    pub witness_address: BytesN<32>,
 }
 
 #[contracttype]
@@ -50,9 +51,7 @@ pub struct MintParams {
     pub contributions: u32,
     pub external_id: String,
     pub nonce: u64,
-    pub passkey: Bytes,
-    pub passkey_signature: Bytes,
-    pub proof_data: Bytes,
+    pub proof: ReclaimProof, // Substituindo proof_data: Bytes por estrutura tipada
     pub username: String,
 }
 
@@ -63,8 +62,7 @@ pub struct GithubData {
     pub expires_at: u64,
     pub external_id: String,
     pub minted_at: u64,
-    pub passkey: Bytes,
-    pub proof_data: Bytes,
+    pub soul_id: u32,
     pub tier: Tier,
     pub updated_at: u64,
     pub username: String,
@@ -91,7 +89,7 @@ impl Tier {
         }
     }
 
-    pub fn to_number(&self) -> u8 {
+    pub fn to_number(&self) -> u32 {
         match self {
             Tier::Novice => 1,
             Tier::Pro => 2,
@@ -115,21 +113,6 @@ pub struct Config {
     pub zk_verifier: Option<Address>,
 }
 
-#[contracttype]
-#[derive(Clone, Debug)]
-pub struct InteropConfig {
-    pub active_protocol: InteropProtocol,
-    pub adapter_address: Address,
-}
-
-#[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum InteropProtocol {
-    None,
-    Axelar,
-    LayerZero,
-    Wormhole,
-}
 
 #[contracttype]
 #[derive(Clone, Debug)]

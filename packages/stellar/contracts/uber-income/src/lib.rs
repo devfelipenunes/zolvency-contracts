@@ -1,7 +1,6 @@
 #![no_std]
 
 mod interface;
-mod messenger;
 mod storage;
 mod types;
 
@@ -13,9 +12,8 @@ use soroban_sdk::{
 };
 
 pub use interface::ZolvencyTokenTrait;
-pub use messenger::MessengerClient;
 pub use types::{
-    CrossChainParams, Error, IncomePeriod, InteropConfig, InteropProtocol, MintParams, RenewalWindow,
+    CrossChainParams, Error, IncomePeriod, MintParams, RenewalWindow,
     RevealMode, TokenMetadata, UberIncomeData, UpdateParams,
     InitializeParams,
 };
@@ -56,8 +54,8 @@ impl ZolvencyTokenTrait for UberIncomeContract {
             .unwrap_or(0)
     }
 
-    fn get_owner_passkey(_env: Env, _token_id: u64) -> Option<soroban_sdk::BytesN<65>> {
-        None
+    fn get_owner_soul(env: Env, token_id: u64) -> u32 {
+        storage::get_token_data(&env, token_id).unwrap().soul_id
     }
 }
 
@@ -83,136 +81,30 @@ impl UberIncomeContract {
             mint_fee_90: params.mint_fee_90,
             max_proof_age_seconds: params.max_proof_age_seconds,
             zk_verifier: None,
-            store_proof_data: params.store_proof_data,
         };
 
         storage::set_config(&env, &config);
-
-        Ok(())
-    }
-
-    pub fn set_zk_verifier(env: Env, admin: Address, verifier: Option<Address>) -> Result<(), Error> {
-        admin.require_auth();
-        Self::assert_admin(&env, &admin)?;
-        let mut config = storage::get_config(&env)?;
-        config.zk_verifier = verifier;
-        storage::set_config(&env, &config);
-        Ok(())
-    }
-
-    pub fn set_fees(
-        env: Env,
-        admin: Address,
-        fee_30: i128,
-        fee_60: i128,
-        fee_90: i128,
-    ) -> Result<(), Error> {
-        admin.require_auth();
-        Self::assert_admin(&env, &admin)?;
-        let mut config = storage::get_config(&env)?;
-        config.mint_fee_30 = fee_30;
-        config.mint_fee_60 = fee_60;
-        config.mint_fee_90 = fee_90;
-        storage::set_config(&env, &config);
-        Ok(())
-    }
-
-    pub fn set_max_proof_age(
-        env: Env,
-        admin: Address,
-        max_proof_age_seconds: u64,
-    ) -> Result<(), Error> {
-        admin.require_auth();
-        Self::assert_admin(&env, &admin)?;
-        let mut config = storage::get_config(&env)?;
-        config.max_proof_age_seconds = max_proof_age_seconds;
-        storage::set_config(&env, &config);
-        Ok(())
-    }
-
-    pub fn set_access_control(
-        env: Env,
-        admin: Address,
-        access_control: Address,
-    ) -> Result<(), Error> {
-        admin.require_auth();
-        Self::assert_admin(&env, &admin)?;
-        let mut config = storage::get_config(&env)?;
-        config.access_control = access_control;
-        storage::set_config(&env, &config);
-        Ok(())
-    }
-
-    pub fn set_treasury(env: Env, admin: Address, treasury: Address) -> Result<(), Error> {
-        admin.require_auth();
-        Self::assert_admin(&env, &admin)?;
-        let mut config = storage::get_config(&env)?;
-        config.treasury = treasury;
-        storage::set_config(&env, &config);
-        Ok(())
-    }
-
-    pub fn set_axelar_config(
-        env: Env,
-        admin: Address,
-        gateway: Address,
-        gas_service: Address,
-        gas_token: Address,
-    ) -> Result<(), Error> {
-        admin.require_auth();
-        Self::assert_admin(&env, &admin)?;
-        let config = types::AxelarConfig {
-            gateway,
-            gas_service,
-            gas_token,
-        };
-        storage::set_axelar_config(&env, &config);
-        Ok(())
-    }
-
-    pub fn set_layerzero_config(env: Env, admin: Address, endpoint: Address) -> Result<(), Error> {
-        admin.require_auth();
-        Self::assert_admin(&env, &admin)?;
-        let config = types::LayerZeroConfig { endpoint };
-        storage::set_layerzero_config(&env, &config);
-        Ok(())
-    }
-
-    pub fn set_active_protocol(
-        env: Env,
-        admin: Address,
-        protocol: InteropProtocol,
-        adapter: Address,
-    ) -> Result<(), Error> {
-        admin.require_auth();
-        Self::assert_admin(&env, &admin)?;
-        let config = InteropConfig {
-            active_protocol: protocol,
-            adapter_address: adapter,
-        };
-        storage::set_interop_config(&env, &config);
         Ok(())
     }
 
     pub fn mint(
         env: Env,
-        admin: Address,
+        caller: Address,
         params: MintParams,
         cross_chain: Option<CrossChainParams>,
     ) -> Result<u64, Error> {
-        admin.require_auth();
-        Self::assert_admin(&env, &admin)?;
+        caller.require_auth();
 
         let config = storage::get_config(&env)?;
-        let res = env.try_invoke_contract::<u32, soroban_sdk::Error>(
+        let res = env.try_invoke_contract::<Option<soroban_sdk::Val>, soroban_sdk::Error>(
             &config.soul_contract,
-            &Symbol::new(&env, "balance"),
-            soroban_sdk::vec![&env, params.recipient.clone().into_val(&env)],
+            &Symbol::new(&env, "get_soul"),
+            soroban_sdk::vec![&env, params.soul_id.into_val(&env)],
         );
 
         match res {
-            Ok(Ok(balance)) if balance > 0 => {}
-            _ => panic!("Unauthorized: No Soul Token detected. Please login via Passkey."),
+            Ok(Ok(Some(_))) => {}
+            _ => return Err(Error::Unauthorized),
         }
 
         if params.external_id.is_empty() || params.external_id.len() > 64 {
@@ -223,7 +115,7 @@ impl UberIncomeContract {
             return Err(Error::InvalidCurrency);
         }
 
-        if storage::has_identity(&env, &params.recipient) {
+        if storage::has_identity(&env, params.soul_id) {
             return Err(Error::AlreadyHasIdentity);
         }
 
@@ -233,18 +125,18 @@ impl UberIncomeContract {
             &params.reveal_mode,
         )?;
 
-        let expected_nonce = storage::get_nonce(&env, &params.recipient);
+        let expected_nonce = storage::get_nonce(&env, params.soul_id);
         if params.nonce != expected_nonce {
             return Err(Error::InvalidNonce);
         }
 
-        let config = storage::get_config(&env)?;
         let now = env.ledger().timestamp();
         types::validate_proof_freshness(now, params.verified_at, config.max_proof_age_seconds)?;
+        
         let fee = types::fee_for_window(&config, &params.window);
         if fee > 0 {
             let token_client = token::Client::new(&env, &config.fee_token);
-            token_client.transfer(&admin, &config.treasury, &fee);
+            token_client.transfer(&caller, &config.treasury, &fee);
         }
 
         if let Some(verifier) = config.zk_verifier {
@@ -258,16 +150,13 @@ impl UberIncomeContract {
             }
         }
 
-        storage::increment_nonce(&env, &params.recipient);
-
         let token_id = storage::get_next_token_id(&env);
         storage::increment_token_counter(&env);
 
         let expires_at = now + params.window.to_seconds();
-        let proof_data = types::normalize_proof_data(&env, config.store_proof_data, params.proof_data);
 
         let data = UberIncomeData {
-            recipient: params.recipient.clone(),
+            soul_id: params.soul_id,
             external_id: params.external_id.clone(),
             income_band: params.income_band,
             income_value: params.income_value,
@@ -276,7 +165,6 @@ impl UberIncomeContract {
             period: params.period.clone(),
             verified_at: params.verified_at,
             proof_hash: params.proof_hash,
-            proof_data,
             window: params.window.clone(),
             minted_at: now,
             updated_at: now,
@@ -284,32 +172,30 @@ impl UberIncomeContract {
         };
 
         storage::set_token_data(&env, token_id, &data);
-        storage::set_holder_token(&env, &params.recipient, token_id);
-        storage::set_has_identity(&env, &params.recipient, true);
+        storage::set_holder_token(&env, params.soul_id, token_id);
+        storage::set_has_identity(&env, params.soul_id, true);
         storage::set_sybil_mapping(&env, &params.external_id, token_id);
 
-        if let Some(cc) = cross_chain {
-            if !cc.destination_chain.is_empty() && !cc.destination_address.is_empty() {
-                if let Ok(interop_config) = storage::get_interop_config(&env) {
-                    if interop_config.active_protocol != InteropProtocol::None {
-                        let messenger = MessengerClient::new(&env, &interop_config.adapter_address);
-                        messenger.send(
-                            &admin,
-                            &cc.destination_chain,
-                            &cc.destination_address,
-                            &params.external_id,
-                            &params.income_band,
-                            &cc.user_destination_address,
-                            &params.nonce,
-                        );
-                    }
-                }
-            }
-        }
+        let _ = env.try_invoke_contract::<(), soroban_sdk::Error>(
+            &config.registry,
+            &Symbol::new(&env, "export_reputation"),
+            (
+                caller,
+                params.soul_id,
+                env.current_contract_address(),
+                params.external_id,
+                params.income_band,
+                params.nonce,
+                cross_chain,
+            )
+                .into_val(&env),
+        );
+
+        storage::increment_nonce(&env, params.soul_id);
 
         env.events().publish(
             (Symbol::new(&env, "uber_income_minted"),),
-            (params.recipient, token_id, params.income_band),
+            (params.soul_id, token_id, params.income_band),
         );
 
         Ok(token_id)
@@ -334,7 +220,7 @@ impl UberIncomeContract {
 
         let mut data = storage::get_token_data(&env, token_id)?;
         
-        let expected_nonce = storage::get_nonce(&env, &data.recipient);
+        let expected_nonce = storage::get_nonce(&env, data.soul_id);
         if nonce != expected_nonce {
             return Err(Error::InvalidNonce);
         }
@@ -347,7 +233,6 @@ impl UberIncomeContract {
         let config = storage::get_config(&env)?;
         types::validate_proof_freshness(now, params.verified_at, config.max_proof_age_seconds)?;
         let expires_at = now + params.window.to_seconds();
-        let proof_data = types::normalize_proof_data(&env, config.store_proof_data, params.proof_data);
 
         data.income_band = params.income_band;
         data.income_value = params.income_value;
@@ -356,36 +241,32 @@ impl UberIncomeContract {
         data.period = params.period;
         data.verified_at = params.verified_at;
         data.proof_hash = params.proof_hash;
-        data.proof_data = proof_data;
         data.window = params.window;
         data.updated_at = now;
         data.expires_at = expires_at;
 
         storage::update_token_data(&env, token_id, &data)?;
-        storage::increment_nonce(&env, &data.recipient);
 
-        if let Some(cc) = cross_chain {
-            if !cc.destination_chain.is_empty() && !cc.destination_address.is_empty() {
-                if let Ok(interop_config) = storage::get_interop_config(&env) {
-                    if interop_config.active_protocol != InteropProtocol::None {
-                        let messenger = MessengerClient::new(&env, &interop_config.adapter_address);
-                        messenger.send(
-                            &admin,
-                            &cc.destination_chain,
-                            &cc.destination_address,
-                            &data.external_id,
-                            &data.income_band,
-                            &cc.user_destination_address,
-                            &nonce,
-                        );
-                    }
-                }
-            }
-        }
+        let _ = env.try_invoke_contract::<(), soroban_sdk::Error>(
+            &config.registry,
+            &Symbol::new(&env, "export_reputation"),
+            (
+                admin,
+                data.soul_id,
+                env.current_contract_address(),
+                data.external_id,
+                data.income_band,
+                nonce,
+                cross_chain,
+            )
+                .into_val(&env),
+        );
+
+        storage::increment_nonce(&env, data.soul_id);
 
         env.events().publish(
             (Symbol::new(&env, "uber_income_updated"),),
-            (data.recipient, token_id, data.income_band),
+            (data.soul_id, token_id, data.income_band),
         );
 
         Ok(())
@@ -395,23 +276,23 @@ impl UberIncomeContract {
         storage::get_token_data(&env, token_id)
     }
 
-    pub fn get_user_token(env: Env, user: Address) -> Result<u64, Error> {
-        storage::get_holder_token(&env, &user)
+    pub fn get_user_token(env: Env, soul_id: u32) -> u64 {
+        storage::get_holder_token(&env, soul_id).unwrap()
     }
 
-    pub fn has_identity(env: Env, user: Address) -> bool {
-        storage::has_identity(&env, &user)
+    pub fn has_identity(env: Env, soul_id: u32) -> bool {
+        storage::has_identity(&env, soul_id)
     }
 
-    pub fn list_tokens_of_user(env: Env, user: Address) -> Vec<u64> {
-        match storage::get_holder_token(&env, &user) {
+    pub fn list_tokens_of_user(env: Env, soul_id: u32) -> Vec<u64> {
+        match storage::get_holder_token(&env, soul_id) {
             Ok(token_id) => Vec::from_array(&env, [token_id]),
             Err(_) => Vec::new(&env),
         }
     }
 
-    pub fn get_nonce(env: Env, user: Address) -> u64 {
-        storage::get_nonce(&env, &user)
+    pub fn get_nonce(env: Env, soul_id: u32) -> u64 {
+        storage::get_nonce(&env, soul_id)
     }
 
     pub fn get_mint_fee(env: Env, window: RenewalWindow) -> i128 {

@@ -1,7 +1,6 @@
 #![no_std]
 
 mod interface;
-mod messenger;
 mod storage;
 mod types;
 
@@ -13,10 +12,8 @@ use soroban_sdk::{
 };
 
 pub use interface::ZolvencyTokenTrait;
-pub use messenger::MessengerClient;
 pub use types::{
-    AxelarConfig, CrossChainParams, Error, GithubData, InteropConfig, InteropProtocol, MintParams,
-    Tier, TokenMetadata,
+    CrossChainParams, Error, GithubData, MintParams, Tier, TokenMetadata,
 };
 
 #[contract]
@@ -55,8 +52,8 @@ impl ZolvencyTokenTrait for GithubIdentityContract {
             .unwrap_or(0)
     }
 
-    fn get_owner_passkey(env: Env, token_id: u64) -> Bytes {
-        storage::get_token_data(&env, token_id).unwrap().passkey
+    fn get_owner_soul(env: Env, token_id: u64) -> u32 {
+        storage::get_token_data(&env, token_id).unwrap().soul_id
     }
 }
 
@@ -95,21 +92,62 @@ impl GithubIdentityContract {
     pub fn mint(
         env: Env,
         caller: Address,
-        user: Address,
+        soul_id: u32,
         params: MintParams,
-    ) -> u64 {
+        cross_chain: Option<CrossChainParams>,
+    ) -> Result<u64, Error> {
         caller.require_auth();
 
         let config = storage::get_config(&env).unwrap();
-        let res = env.try_invoke_contract::<u32, soroban_sdk::Error>(
+
+        // --- 🔒 VERIFICAÇÃO ON-CHAIN DA PROVA ZK (RECLAIM) ---
+        // 1. Validar Assinatura via Host Function Nativa (Ed25519)
+        let signature = params.proof.signatures.get(0).ok_or(Error::InvalidSignature)?;
+        
+        env.crypto().ed25519_verify(
+            &params.proof.witness_address,
+            &params.proof.signed_claim.clone().into(),
+            &signature
+        );
+
+        // 2. Prevenção de Front-Running e Roubo de Prova
+        // A prova DEVE conter o soul_id do usuário no campo context.
+        let context_bytes: Bytes = params.proof.claim_info.context.into();
+        let soul_id_bytes = u32_to_bytes(&env, soul_id);
+        
+        if !contains(&context_bytes, &soul_id_bytes) {
+             return Err(Error::Unauthorized);
+        }
+
+        // 3. Integridade dos Atributos
+        let params_bytes: Bytes = params.proof.claim_info.parameters.into();
+        let external_id_bytes: Bytes = params.external_id.clone().into();
+        
+        if !contains(&params_bytes, &external_id_bytes) {
+            return Err(Error::SybilConflict);
+        }
+        // ---------------------------------------------------
+
+        let res = env.try_invoke_contract::<Option<soroban_sdk::Val>, soroban_sdk::Error>(
             &config.soul_contract,
-            &Symbol::new(&env, "balance"),
-            soroban_sdk::vec![&env, user.clone().into_val(&env)],
+            &Symbol::new(&env, "get_soul"),
+            soroban_sdk::vec![&env, soul_id.into_val(&env)],
         );
 
         match res {
-            Ok(Ok(balance)) if balance > 0 => {}
-            _ => panic!("Unauthorized: No Soul Token detected. Please login via Passkey."),
+            Ok(Ok(Some(_))) => {}
+            _ => return Err(Error::Unauthorized),
+        }
+
+        let expected_nonce = storage::get_nonce(&env, soul_id);
+        if params.nonce != expected_nonce {
+            return Err(Error::InvalidNonce);
+        }
+
+        // 💸 Charge Mint Fee
+        if config.mint_fee > 0 {
+            let token_client = soroban_sdk::token::Client::new(&env, &config.fee_token);
+            token_client.transfer(&caller, &config.treasury, &config.mint_fee);
         }
 
         let token_id = storage::get_next_token_id(&env);
@@ -121,27 +159,43 @@ impl GithubIdentityContract {
             expires_at: env.ledger().timestamp() + (90 * 24 * 60 * 60),
             external_id: params.external_id.clone(),
             minted_at: env.ledger().timestamp(),
-            passkey: params.passkey.clone(),
-            proof_data: params.proof_data.clone(),
             tier: tier.clone(),
             updated_at: env.ledger().timestamp(),
             username: params.username.clone(),
+            soul_id,
         };
 
         storage::set_token_data(&env, token_id, &github_data);
-        storage::set_holder_token(&env, &user, token_id);
-        storage::set_has_identity(&env, &user, true);
+        storage::set_holder_token(&env, soul_id, token_id);
+        storage::set_has_identity(&env, soul_id, true);
         storage::set_sybil_mapping(&env, &params.external_id, token_id);
 
-        token_id
+        let _ = env.try_invoke_contract::<(), soroban_sdk::Error>(
+            &config.registry,
+            &Symbol::new(&env, "export_reputation"),
+            (
+                caller,
+                soul_id,
+                env.current_contract_address(),
+                params.external_id,
+                tier.to_number(),
+                params.nonce,
+                cross_chain,
+            )
+                .into_val(&env),
+        );
+
+        storage::increment_nonce(&env, soul_id);
+
+        Ok(token_id)
     }
 
-    pub fn has_identity(env: Env, user: Address) -> bool {
-        storage::has_identity(&env, &user)
+    pub fn has_identity(env: Env, soul_id: u32) -> bool {
+        storage::has_identity(&env, soul_id)
     }
 
-    pub fn get_user_token(env: Env, user: Address) -> u64 {
-        storage::get_holder_token(&env, &user).unwrap()
+    pub fn get_user_token(env: Env, soul_id: u32) -> u64 {
+        storage::get_holder_token(&env, soul_id).unwrap()
     }
 
     pub fn upgrade(env: Env, admin: Address, new_wasm_hash: BytesN<32>) -> Result<(), Error> {
@@ -149,4 +203,42 @@ impl GithubIdentityContract {
         env.deployer().update_current_contract_wasm(new_wasm_hash);
         Ok(())
     }
+}
+
+// --- HELPERS ---
+fn u32_to_bytes(env: &Env, n: u32) -> Bytes {
+    let mut bytes = soroban_sdk::Vec::new(env);
+    if n == 0 {
+        bytes.push_back(48); // '0'
+    } else {
+        let mut temp = n;
+        while temp > 0 {
+            bytes.push_front((48 + (temp % 10)) as u8);
+            temp /= 10;
+        }
+    }
+    let mut res = Bytes::new(env);
+    for b in bytes.iter() {
+        res.append(&Bytes::from_array(env, &[b]));
+    }
+    res
+}
+
+fn contains(haystack: &Bytes, needle: &Bytes) -> bool {
+    if needle.len() > haystack.len() {
+        return false;
+    }
+    for i in 0..=(haystack.len() - needle.len()) {
+        let mut match_found = true;
+        for j in 0..needle.len() {
+            if haystack.get(i + j).unwrap() != needle.get(j).unwrap() {
+                match_found = false;
+                break;
+            }
+        }
+        if match_found {
+            return true;
+        }
+    }
+    false
 }

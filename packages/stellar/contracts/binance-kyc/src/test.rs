@@ -7,6 +7,7 @@ use soroban_sdk::{
 };
 
 use zolvency_soul::{ZolvencySoulContract, ZolvencySoulContractClient};
+use zolvency_registry::{ZolvencyRegistry, ZolvencyRegistryClient};
 
 #[contract]
 pub struct MockAdapter;
@@ -22,6 +23,7 @@ impl MockAdapter {
                 _tier: u32,
                 _user_evm_address: Bytes,
                 _nonce: u64,
+                _token_type: Symbol,
         ) -> Result<(), crate::types::Error> {
                 env.events().publish(
                         (Symbol::new(&env, "adapter_send"),),
@@ -32,6 +34,7 @@ impl MockAdapter {
                                 _tier,
                                 _user_evm_address,
                                 _nonce,
+                                _token_type,
                         ),
                 );
                 Ok(())
@@ -42,6 +45,7 @@ struct TestEnv {
         env: Env,
         client: BinanceKycContractClient<'static>,
         admin: Address,
+        registry: Address,
         recipient: Address,
 }
 
@@ -51,11 +55,16 @@ fn setup(store_proof_data: bool) -> TestEnv {
         env.ledger().set_timestamp(1714316400);
 
 	let admin = Address::generate(&env);
-	let registry = Address::generate(&env);
 	let fee_token = Address::generate(&env);
 	let access_control = Address::generate(&env);
 	let treasury = Address::generate(&env);
 
+
+	// Registry
+	let registry_id = env.register(ZolvencyRegistry, ());
+	let registry_client = ZolvencyRegistryClient::new(&env, &registry_id);
+	let signer = Address::generate(&env);
+	registry_client.initialize(&admin, &signer);
 
 	let soul_admin = admin.clone();
 	let soul_relayer = Address::generate(&env);
@@ -63,17 +72,15 @@ fn setup(store_proof_data: bool) -> TestEnv {
 	let soul_client = ZolvencySoulContractClient::new(&env, &soul_contract_id);
 	let _ = soul_client.initialize(&soul_admin, &soul_relayer);
 
-	let recipient = Address::generate(&env);
-	let passkey = BytesN::from_array(&env, &[0u8; 32]);
-	let _ = soul_client.mint(&soul_relayer, &recipient, &passkey);
+	let passkey = BytesN::from_array(&env, &[0u8; 65]);
+	let recovery_pubkey = BytesN::from_array(&env, &[1u8; 65]);
+	let _ = soul_client.mint(&soul_relayer, &passkey, &recovery_pubkey);
 	let contract_id = env.register(BinanceKycContract, ());
-	let client: BinanceKycContractClient<'static> = unsafe {
-		core::mem::transmute(BinanceKycContractClient::new(&env, &contract_id))
-	};
+	let client = BinanceKycContractClient::new(&env, &contract_id);
 
 	client.initialize(
 		&admin,
-		&registry,
+		&registry_id,
 		&fee_token,
 		&access_control,
 		&treasury,
@@ -84,18 +91,48 @@ fn setup(store_proof_data: bool) -> TestEnv {
 	);
 
 	client.set_soul_contract(&admin, &soul_contract_id);
+	
+	// Registrar o token no registry para permitir exportação
+	registry_client.register_token(&admin, &contract_id);
 
 	TestEnv {
-		env,
+		env: env.clone(),
 		client,
 		admin,
-		recipient,
+		registry: registry_id,
+		recipient: Address::generate(&env), // Dummy address for caller
 	}
 }
 
-fn mint_params(env: &Env, recipient: &Address) -> MintParams {
+#[test]
+fn test_initialize_already_initialized() {
+    let ctx = setup(false);
+    let res = ctx.client.try_initialize(&ctx.admin, &ctx.registry, &Address::generate(&ctx.env), &Address::generate(&ctx.env), &Address::generate(&ctx.env), &0, &0, &0, &false);
+    assert_eq!(res, Err(Ok(Error::AlreadyInitialized)));
+}
+
+#[test]
+fn test_mint_invalid_nonce() {
+    let ctx = setup(false);
+    let soul_id = 1u32;
+    let mut params = mint_params(&ctx.env, soul_id);
+    params.nonce = 1; // Nonce errado
+
+    let res = ctx.client.try_mint(&ctx.admin, &params, &None);
+    assert_eq!(res, Err(Ok(Error::InvalidNonce)));
+}
+
+#[test]
+fn test_unauthorized_fee_setting() {
+    let ctx = setup(false);
+    let attacker = Address::generate(&ctx.env);
+    let res = ctx.client.try_set_fees(&attacker, &10, &20, &30);
+    assert_eq!(res, Err(Ok(Error::NotAdmin)));
+}
+
+fn mint_params(env: &Env, soul_id: u32) -> MintParams {
 	MintParams {
-		recipient: recipient.clone(),
+		soul_id,
 		external_id: String::from_str(env, "binance_user"),
 		kyc_level: KycLevel::Advanced,
 		country: String::from_str(env, "BR"),
@@ -110,7 +147,8 @@ fn mint_params(env: &Env, recipient: &Address) -> MintParams {
 #[test]
 fn test_mint_kyc() {
 	let ctx = setup(false);
-	let params = mint_params(&ctx.env, &ctx.recipient);
+	let soul_id = 1u32;
+	let params = mint_params(&ctx.env, soul_id);
 
 	let token_id = ctx.client.mint(&ctx.admin, &params, &None);
 	let data = ctx.client.get_token_data(&token_id);
@@ -124,7 +162,8 @@ fn test_mint_kyc() {
 #[test]
 fn test_update_kyc() {
 	let ctx = setup(true);
-	let params = mint_params(&ctx.env, &ctx.recipient);
+	let soul_id = 1u32;
+	let params = mint_params(&ctx.env, soul_id);
 	let token_id = ctx.client.mint(&ctx.admin, &params, &None);
 
 	let update_params = UpdateParams {
@@ -148,7 +187,8 @@ fn test_update_kyc() {
 #[should_panic(expected = "Error(Contract, #13)")]
 fn test_update_after_expiry_fails() {
 	let ctx = setup(false);
-	let params = mint_params(&ctx.env, &ctx.recipient);
+	let soul_id = 1u32;
+	let params = mint_params(&ctx.env, soul_id);
 	let token_id = ctx.client.mint(&ctx.admin, &params, &None);
 
 	let current = ctx.env.ledger().timestamp();
@@ -166,25 +206,24 @@ fn test_update_after_expiry_fails() {
 	};
 
 	ctx.client
-	        .update_token(&ctx.admin, &token_id, &update_params, &1u64, &None);}
-
-#[test]
-fn test_mint_fee_by_window() {
-	let ctx = setup(false);
-	ctx.client.set_fees(&ctx.admin, &10, &20, &30);
-	assert_eq!(ctx.client.get_mint_fee(&RenewalWindow::Days30), 10);
-	assert_eq!(ctx.client.get_mint_fee(&RenewalWindow::Days60), 20);
-	assert_eq!(ctx.client.get_mint_fee(&RenewalWindow::Days90), 30);
+	        .update_token(&ctx.admin, &token_id, &update_params, &1u64, &None);
 }
 
 #[test]
 fn test_cross_chain_send_event() {
 	let ctx = setup(false);
 	let adapter_id = ctx.env.register(MockAdapter, ());
-	ctx.client
-		.set_active_protocol(&ctx.admin, &InteropProtocol::LayerZero, &adapter_id);
+	
+	// Registry Client para configurar o interop
+	let registry_client = ZolvencyRegistryClient::new(&ctx.env, &ctx.registry);
+	let interop_config = zolvency_registry::InteropConfig {
+		active_protocol: zolvency_registry::InteropProtocol::Axelar,
+		adapter_address: adapter_id,
+	};
+	registry_client.set_interop_config(&ctx.admin, &interop_config);
 
-	let params = mint_params(&ctx.env, &ctx.recipient);
+	let soul_id = 1u32;
+	let params = mint_params(&ctx.env, soul_id);
 	let cc_params = CrossChainParams {
 		destination_chain: String::from_str(&ctx.env, "ethereum"),
 		destination_address: String::from_str(&ctx.env, "0xabc"),

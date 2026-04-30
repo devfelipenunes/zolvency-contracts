@@ -115,23 +115,28 @@ impl ZolvencySoulContract {
             return Err(Error::NotAuthorized);
         }
 
+        if old_passkey == new_passkey {
+            return Err(Error::SoulAlreadyExists);
+        }
+
+        if crate::storage::get_soul_id_by_passkey(&env, &new_passkey).is_some() {
+            return Err(Error::SoulAlreadyExists);
+        }
+
         let soul_id = crate::storage::get_soul_id_by_passkey(&env, &old_passkey).ok_or(Error::SoulNotFound)?;
         let mut soul_data = crate::storage::get_soul_by_id(&env, soul_id).unwrap();
 
-        // Verify recovery signature: sign(hash(old_passkey + new_passkey))
         let mut msg = Bytes::new(&env);
         msg.append(&old_passkey.clone().into());
         msg.append(&new_passkey.clone().into());
         let msg_hash = env.crypto().sha256(&msg);
 
-        // This is the core sovereign recovery check
         env.crypto().secp256r1_verify(
             &soul_data.recovery_pubkey,
             &msg_hash,
             &recovery_signature
         );
 
-        // Update mappings
         remove_passkey_mapping(&env, &old_passkey);
         soul_data.passkey = new_passkey.clone();
         set_soul(&env, &soul_data);
@@ -154,6 +159,61 @@ impl ZolvencySoulContract {
         }
 
         env.storage().instance().set(&DataKey::Relayer, &new_relayer);
+        
+        env.events().publish(
+            (symbol_short!("relayer"), symbol_short!("updated")),
+            new_relayer,
+        );
+        
+        Ok(())
+    }
+
+    pub fn transfer_admin(env: Env, admin: Address, new_admin: Address) -> Result<(), Error> {
+        extend_instance(&env);
+        admin.require_auth();
+        
+        let stored_admin = get_admin(&env)?;
+        if admin != stored_admin {
+            return Err(Error::NotAuthorized);
+        }
+
+        env.storage().instance().set(&DataKey::PendingAdmin, &new_admin);
+        Ok(())
+    }
+
+    pub fn accept_admin(env: Env, new_admin: Address) -> Result<(), Error> {
+        extend_instance(&env);
+        new_admin.require_auth();
+        
+        let pending_admin: Address = env.storage().instance()
+            .get(&DataKey::PendingAdmin)
+            .ok_or(Error::NotAuthorized)?;
+
+        if new_admin != pending_admin {
+            return Err(Error::NotAuthorized);
+        }
+
+        env.storage().instance().set(&DataKey::Admin, &new_admin);
+        env.storage().instance().remove(&DataKey::PendingAdmin);
+        
+        env.events().publish(
+            (symbol_short!("admin"), symbol_short!("updated")),
+            new_admin,
+        );
+        
+        Ok(())
+    }
+
+    pub fn upgrade(env: Env, admin: Address, new_wasm_hash: BytesN<32>) -> Result<(), Error> {
+        extend_instance(&env);
+        admin.require_auth();
+        
+        let stored_admin = get_admin(&env)?;
+        if admin != stored_admin {
+            return Err(Error::NotAuthorized);
+        }
+
+        env.deployer().update_current_contract_wasm(new_wasm_hash);
         Ok(())
     }
 }

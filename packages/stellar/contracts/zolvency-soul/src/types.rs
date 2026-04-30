@@ -17,6 +17,7 @@ pub enum Error {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DataKey {
     Admin,
+    PendingAdmin,
     Relayer,
     TotalSouls,
     SoulById(u32),                 // SoulID -> SoulData

@@ -8,5 +8,5 @@ pub trait ZolvencyTokenTrait {
     fn get_metadata(env: Env) -> TokenMetadata;
     fn is_valid(env: Env, token_id: u64) -> bool;
     fn get_expiry(env: Env, token_id: u64) -> u64;
-    fn get_owner_passkey(env: Env, token_id: u64) -> Option<BytesN<65>>;
+    fn get_owner_soul(env: Env, token_id: u64) -> u32;
 }

@@ -18,10 +18,13 @@ contract ZolvencyVerifierAuthority is Ownable {
         uint8 tier;
     }
 
-    mapping(address => Reputation) public reputations;
+    // mapping(user => mapping(tokenType => Reputation))
+    mapping(address => mapping(bytes32 => Reputation)) public reputations;
+    // mapping(user => nonce)
+    mapping(address => uint256) public nonces;
     address public authorityAddress;
 
-    event ReputationUpdated(address indexed user, bytes32 externalId, uint8 tier);
+    event ReputationUpdated(address indexed user, bytes32 indexed tokenType, bytes32 externalId, uint8 tier);
 
     constructor(address _authorityAddress) Ownable(msg.sender) {
         require(_authorityAddress != address(0), "INVALID_AUTHORITY_ADDRESS");
@@ -34,37 +37,49 @@ contract ZolvencyVerifierAuthority is Ownable {
     }
 
     /**
-     * @dev Verifies a signature from the authority and updates reputation.
-     * @param user The address of the user.
-     * @param externalId The user's external ID (e.g. GitHub ID hash).
-     * @param tier The reputation tier.
-     * @param signature The signature from the authority.
+     * @notice Verifies authority signature and updates user reputation
+     * @param user User address
+     * @param tokenType Token type hash
+     * @param externalId External platform ID hash
+     * @param tier Reputation tier
+     * @param nonce Current user nonce
+     * @param signature Authority signature
      */
     function verifyAndSetReputation(
         address user,
+        bytes32 tokenType,
         bytes32 externalId,
         uint8 tier,
+        uint256 nonce,
         bytes calldata signature
     ) external {
-        // Construct the hash that was signed
-        bytes32 messageHash = keccak256(abi.encodePacked(user, externalId, tier));
+        require(nonce == nonces[user], "INVALID_NONCE");
+        
+        bytes32 messageHash = keccak256(abi.encodePacked(
+            block.chainid,
+            address(this),
+            user, 
+            tokenType, 
+            externalId, 
+            tier,
+            nonce
+        ));
         bytes32 ethSignedMessageHash = messageHash.toEthSignedMessageHash();
 
-        // Verify the signer is our authority
         address signer = ethSignedMessageHash.recover(signature);
-        require(signer == authorityAddress, "INVALID_AUTHORITY_SIGNATURE");
+        require(signer == authorityAddress, "INVALID_AUTH");
 
-        // Update reputation
-        reputations[user] = Reputation({
+        nonces[user]++;
+        reputations[user][tokenType] = Reputation({
             externalId: externalId,
             tier: tier
         });
 
-        emit ReputationUpdated(user, externalId, tier);
+        emit ReputationUpdated(user, tokenType, externalId, tier);
     }
 
-    function getReputation(address user) external view returns (bytes32 externalId, uint8 tier) {
-        Reputation storage rep = reputations[user];
+    function getReputation(address user, bytes32 tokenType) external view returns (bytes32 externalId, uint8 tier) {
+        Reputation storage rep = reputations[user][tokenType];
         return (rep.externalId, rep.tier);
     }
 }

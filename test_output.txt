@@ -1,0 +1,18 @@
+◇ injected env (13) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+Uploading target/wasm32-unknown-unknown/release/zolvency_soul.optimized.wasm...
+Checking tx 0350dd9171ca49af4375d276a276242e28657c61a8618c8125b9841ae9d62b24... Status: NOT_FOUND
+Checking tx 0350dd9171ca49af4375d276a276242e28657c61a8618c8125b9841ae9d62b24... Status: NOT_FOUND
+Checking tx 0350dd9171ca49af4375d276a276242e28657c61a8618c8125b9841ae9d62b24... Status: SUCCESS
+Wasm uploaded. Hash: 6c7c405e9ae9d891985f58b4ff96e77f7ef74dba64dbcf82d94ec4ab20a01be0
+Creating contract for hash 6c7c405e9ae9d891985f58b4ff96e77f7ef74dba64dbcf82d94ec4ab20a01be0...
+❌ Error during test: XdrWriterError [TypeError]: XDR Write Error: undefined has union name undefined, not ContractIdPreimage: undefined
+    at ChildUnion.write (/l/disk0/fnunes/Documentos/me/zolvency/contracts/node_modules/@stellar/js-xdr/lib/xdr.js:1830:13)
+    at ChildStruct.write (/l/disk0/fnunes/Documentos/me/zolvency/contracts/node_modules/@stellar/js-xdr/lib/xdr.js:1628:12)
+    at ChildUnion.write (/l/disk0/fnunes/Documentos/me/zolvency/contracts/node_modules/@stellar/js-xdr/lib/xdr.js:1833:21)
+    at ChildStruct.write (/l/disk0/fnunes/Documentos/me/zolvency/contracts/node_modules/@stellar/js-xdr/lib/xdr.js:1628:12)
+    at ChildUnion.write (/l/disk0/fnunes/Documentos/me/zolvency/contracts/node_modules/@stellar/js-xdr/lib/xdr.js:1833:21)
+    at ChildStruct.write (/l/disk0/fnunes/Documentos/me/zolvency/contracts/node_modules/@stellar/js-xdr/lib/xdr.js:1628:12)
+    at VarArray.write (/l/disk0/fnunes/Documentos/me/zolvency/contracts/node_modules/@stellar/js-xdr/lib/xdr.js:2047:23)
+    at ChildStruct.write (/l/disk0/fnunes/Documentos/me/zolvency/contracts/node_modules/@stellar/js-xdr/lib/xdr.js:1628:12)
+    at ChildStruct.toXDR (/l/disk0/fnunes/Documentos/me/zolvency/contracts/node_modules/@stellar/js-xdr/lib/xdr.js:2225:10)
+    at ChildStruct.toXDR (/l/disk0/fnunes/Documentos/me/zolvency/contracts/node_modules/@stellar/js-xdr/lib/xdr.js:2182:46)

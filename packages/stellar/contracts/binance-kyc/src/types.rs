@@ -25,40 +25,9 @@ pub enum Error {
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[allow(clippy::enum_variant_names)]
 pub enum DataKey {
-    AxelarConfig,
-    LayerZeroConfig,
-    InteropConfig,
+    Config,
 }
 
-#[contracttype]
-#[derive(Clone, Debug)]
-pub struct AxelarConfig {
-    pub gateway: Address,
-    pub gas_service: Address,
-    pub gas_token: Address,
-}
-
-#[contracttype]
-#[derive(Clone, Debug)]
-pub struct LayerZeroConfig {
-    pub endpoint: Address,
-}
-
-#[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum InteropProtocol {
-    None,
-    Axelar,
-    LayerZero,
-    Wormhole,
-}
-
-#[contracttype]
-#[derive(Clone, Debug)]
-pub struct InteropConfig {
-    pub active_protocol: InteropProtocol,
-    pub adapter_address: Address,
-}
 
 #[contracttype]
 #[derive(Clone, Debug)]
@@ -107,7 +76,7 @@ impl KycLevel {
 #[contracttype]
 #[derive(Clone, Debug)]
 pub struct MintParams {
-    pub recipient: Address,
+    pub soul_id: u32,
     pub external_id: String,
     pub kyc_level: KycLevel,
     pub country: String,
@@ -132,7 +101,7 @@ pub struct UpdateParams {
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct KycData {
-    pub recipient: Address,
+    pub soul_id: u32,
     pub external_id: String,
     pub kyc_level: KycLevel,
     pub country: String,

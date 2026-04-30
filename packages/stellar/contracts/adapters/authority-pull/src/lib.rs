@@ -20,6 +20,7 @@ impl AuthorityPullAdapter {
         external_id: String,
         tier: u32,
         user_evm_address: Bytes,
+        nonce: u64,
     ) -> Result<(), Error> {
         caller.require_auth();
 
@@ -31,9 +32,13 @@ impl AuthorityPullAdapter {
                 external_id,
                 tier,
                 user_evm_address,
+                nonce,
             ),
         );
 
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod test;

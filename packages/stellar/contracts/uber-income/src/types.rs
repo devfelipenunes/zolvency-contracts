@@ -28,40 +28,9 @@ pub enum Error {
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[allow(clippy::enum_variant_names)]
 pub enum DataKey {
-    AxelarConfig,
-    LayerZeroConfig,
-    InteropConfig,
+    Config,
 }
 
-#[contracttype]
-#[derive(Clone, Debug)]
-pub struct AxelarConfig {
-    pub gateway: Address,
-    pub gas_service: Address,
-    pub gas_token: Address,
-}
-
-#[contracttype]
-#[derive(Clone, Debug)]
-pub struct LayerZeroConfig {
-    pub endpoint: Address,
-}
-
-#[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum InteropProtocol {
-    None,
-    Axelar,
-    LayerZero,
-    Wormhole,
-}
-
-#[contracttype]
-#[derive(Clone, Debug)]
-pub struct InteropConfig {
-    pub active_protocol: InteropProtocol,
-    pub adapter_address: Address,
-}
 
 #[contracttype]
 #[derive(Clone, Debug)]
@@ -105,7 +74,7 @@ pub enum IncomePeriod {
 #[contracttype]
 #[derive(Clone, Debug)]
 pub struct MintParams {
-    pub recipient: Address,
+    pub soul_id: u32,
     pub external_id: String,
     pub income_band: u32,
     pub income_value: Option<i128>,
@@ -136,7 +105,7 @@ pub struct UpdateParams {
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct UberIncomeData {
-    pub recipient: Address,
+    pub soul_id: u32,
     pub external_id: String,
     pub income_band: u32,
     pub income_value: Option<i128>,
@@ -145,7 +114,6 @@ pub struct UberIncomeData {
     pub period: IncomePeriod,
     pub verified_at: u64,
     pub proof_hash: BytesN<32>,
-    pub proof_data: Bytes,
     pub window: RenewalWindow,
     pub minted_at: u64,
     pub updated_at: u64,
@@ -165,7 +133,6 @@ pub struct InitializeParams {
     pub mint_fee_60: i128,
     pub mint_fee_90: i128,
     pub max_proof_age_seconds: u64,
-    pub store_proof_data: bool,
 }
 
 #[contracttype]
@@ -182,7 +149,6 @@ pub struct Config {
     pub mint_fee_90: i128,
     pub max_proof_age_seconds: u64,
     pub zk_verifier: Option<Address>,
-    pub store_proof_data: bool,
 }
 
 #[contracttype]
@@ -225,14 +191,6 @@ pub fn validate_income_fields(
     }
 
     Ok(())
-}
-
-pub fn normalize_proof_data(env: &Env, store: bool, data: Bytes) -> Bytes {
-    if store {
-        data
-    } else {
-        Bytes::new(env)
-    }
 }
 
 pub fn validate_proof_freshness(

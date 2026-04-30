@@ -65,28 +65,18 @@ impl AxelarAdapter {
         tier: u32,
         user_evm_address: Bytes,
         nonce: u64,
+        token_type: Symbol,
     ) -> Result<(), Error> {
-        caller.require_auth();
+        let admin: Address = env.storage().instance().get(&DataKey::Admin).ok_or(Error::NotInitialized)?;
+        admin.require_auth();
 
-        // ── Gating: Soul Check ──
-        let soul_contract: Address = env.storage().instance().get(&DataKey::SoulContract).ok_or(Error::NotInitialized)?;
-        let res = env.try_invoke_contract::<u32, soroban_sdk::Error>(
-            &soul_contract,
-            &Symbol::new(&env, "balance"),
-            soroban_sdk::vec![&env, caller.clone().into_val(&env)],
-        );
-
-        match res {
-            Ok(Ok(balance)) if balance > 0 => { /* Soul detected, proceed */ }
-            _ => panic!("Unauthorized: No Soul Token detected. Please login via Passkey."),
-        }
-
+        // ── Gating: Authority Check (Simplified) ──
         let gateway: Address = env.storage().instance().get(&DataKey::Gateway).ok_or(Error::NotInitialized)?;
         let gas_service: Address = env.storage().instance().get(&DataKey::GasService).ok_or(Error::NotInitialized)?;
         let gas_token_addr: Address = env.storage().instance().get(&DataKey::GasToken).ok_or(Error::NotInitialized)?;
 
-        // 1. Codificação do Payload (Adicionado Nonce)
-        let payload = Self::encode_evm_payload(&env, &external_id, tier as u8, &user_evm_address, nonce);
+        // 1. Codificação do Payload (Adicionado Nonce e Token Type)
+        let payload = Self::encode_evm_payload(&env, &external_id, tier as u8, &user_evm_address, nonce, token_type);
 
         // 2. Pagamento de Gás (Axelar Gas Service)
         let gas_token = AxelarGasToken {
@@ -125,7 +115,7 @@ impl AxelarAdapter {
         Ok(())
     }
 
-    fn encode_evm_payload(env: &Env, external_id: &String, tier: u8, user: &Bytes, nonce: u64) -> Bytes {
+    fn encode_evm_payload(env: &Env, external_id: &String, tier: u8, user: &Bytes, nonce: u64, token_type: Symbol) -> Bytes {
         let mut payload = Bytes::new(env);
         
         // 1. External ID (32 bytes)
@@ -148,6 +138,13 @@ impl AxelarAdapter {
         nonce_bytes[24..32].copy_from_slice(&n_be);
         payload.append(&Bytes::from_array(env, &nonce_bytes));
 
+        // 5. Token Type (32 bytes - Hash of Symbol)
+        let type_hash = env.crypto().keccak256(&token_type.to_xdr(env));
+        payload.append(&type_hash.into());
+
         payload
     }
 }
+
+#[cfg(test)]
+mod test;

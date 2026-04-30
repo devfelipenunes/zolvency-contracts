@@ -85,8 +85,19 @@ pub trait MessengerTrait {
 
 ---
 
-## 5. Glossário de Novos Nós
-- [[Soroban-TTL-Strategy]]: Manual de gestão de custos de armazenamento no Soroban.
-- [[Cross-Chain-Nonce-Sync]]: Mecanismo de prevenção de replay em mensageria modular.
-- [[Hub-Spoke-Separation]]: Vantagens competitivas de arquiteturas modulares em DeFi.
-- [[ZK-Verifier-Hook]]: Interface para delegação de computação pesada para off-chain provvers.
+## 6. The Interoperable Trust Layer
+
+The Zolvency architecture is designed for **Cross-Chain Portability**. By utilizing a "Hub & Spoke" model on Stellar/Soroban, we create a centralized trust anchor that can export reputation attestations to any external network.
+
+### 6.1 Dual-Token Identity Binding
+- **Identity Hub (Soul ID):** The root of trust on Stellar.
+- **ZK Reputation Spokes (SBTs):** Specialized contracts that verify external data (GitHub, Bank, etc.) via **zkTLS**.
+- **The Binding:** Proofs are cryptographically tied to the Soul ID using ZK context, preventing identity theft across chains.
+
+### 6.2 Cross-Chain Attestation Flow
+1. **Verification:** A ZK proof is verified on-chain by a Soroban Spoke contract.
+2. **Attestation:** The contract emits an event or updates a state that is picked up by a Cross-Chain Adapter (Axelar/LayerZero).
+3. **Consumption:** A dApp on an external chain (e.g., Ethereum) receives the verified "Trust Score" and executes business logic (e.g., releasing a loan).
+
+### 6.3 Agentic Trust Extensions
+Zolvency supports **AI Agent Identities**. A human user can delegate a "Sub-Soul" to an agent, restricting its capabilities via ZK proofs of policy compliance. This allows agents to act on behalf of humans across multiple chains with cryptographic safety.

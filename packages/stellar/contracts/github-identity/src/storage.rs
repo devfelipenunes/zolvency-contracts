@@ -1,7 +1,7 @@
 use soroban_sdk::{Address, Env, Symbol};
 
 use crate::types::{
-    AxelarConfig, Config, DataKey, Error, GithubData, InteropConfig, LayerZeroConfig,
+    Config, DataKey, Error, GithubData,
 };
 
 const KEY_CONFIG: &str = "CONFIG";
@@ -12,56 +12,24 @@ const THIRTY_DAYS: u32 = 30 * DAY_IN_LEDGERS;
 const ONE_YEAR: u32 = 365 * DAY_IN_LEDGERS;
 
 pub fn set_config(env: &Env, config: &Config) {
-    let key = &KEY_CONFIG;
-    env.storage().persistent().set(key, config);
-    env.storage()
-        .persistent()
-        .extend_ttl(key, ONE_YEAR, ONE_YEAR);
+    env.storage().instance().set(&DataKey::Config, config);
+    extend_instance(env);
 }
 
 pub fn get_config(env: &Env) -> Result<Config, Error> {
-    let key = &KEY_CONFIG;
-    let config: Option<Config> = env.storage().persistent().get(key);
+    let config: Option<Config> = env.storage().instance().get(&DataKey::Config);
     if let Some(c) = config {
-        env.storage()
-            .persistent()
-            .extend_ttl(key, ONE_YEAR, ONE_YEAR);
+        extend_instance(env);
         Ok(c)
     } else {
         Err(Error::NotInitialized)
     }
 }
 
-pub fn get_interop_config(env: &Env) -> Result<InteropConfig, Error> {
-    env.storage()
-        .instance()
-        .get(&DataKey::InteropConfig)
-        .ok_or(Error::NotInitialized)
+pub fn extend_instance(env: &Env) {
+    env.storage().instance().extend_ttl(ONE_YEAR, ONE_YEAR);
 }
 
-pub fn set_interop_config(env: &Env, config: &InteropConfig) {
-    env.storage()
-        .instance()
-        .set(&DataKey::InteropConfig, config);
-}
-
-pub fn set_axelar_config(env: &Env, config: &AxelarConfig) {
-    env.storage().instance().set(&DataKey::AxelarConfig, config);
-}
-
-#[allow(dead_code)]
-pub fn get_axelar_config(env: &Env) -> Result<AxelarConfig, Error> {
-    env.storage()
-        .instance()
-        .get(&DataKey::AxelarConfig)
-        .ok_or(Error::NotInitialized)
-}
-
-pub fn set_layerzero_config(env: &Env, config: &LayerZeroConfig) {
-    env.storage()
-        .instance()
-        .set(&DataKey::LayerZeroConfig, config);
-}
 
 pub fn set_token_data(env: &Env, token_id: u64, data: &GithubData) {
     let key = (Symbol::new(env, "TOK"), token_id);
@@ -84,21 +52,17 @@ pub fn get_token_data(env: &Env, token_id: u64) -> Result<GithubData, Error> {
     }
 }
 
-pub fn set_holder_token(env: &Env, holder: &Address, token_id: u64) {
-    let key = (Symbol::new(env, "HLD"), holder.clone());
+pub fn set_holder_token(env: &Env, soul_id: u32, token_id: u64) {
+    let key = (Symbol::new(env, "HLD"), soul_id);
     env.storage().persistent().set(&key, &token_id);
-    env.storage()
-        .persistent()
-        .extend_ttl(&key, ONE_YEAR, ONE_YEAR);
+    env.storage().persistent().extend_ttl(&key, ONE_YEAR, ONE_YEAR);
 }
 
-pub fn get_holder_token(env: &Env, holder: &Address) -> Result<u64, Error> {
-    let key = (Symbol::new(env, "HLD"), holder.clone());
+pub fn get_holder_token(env: &Env, soul_id: u32) -> Result<u64, Error> {
+    let key = (Symbol::new(env, "HLD"), soul_id);
     let token_id: Option<u64> = env.storage().persistent().get(&key);
     if let Some(id) = token_id {
-        env.storage()
-            .persistent()
-            .extend_ttl(&key, ONE_YEAR, ONE_YEAR);
+        env.storage().persistent().extend_ttl(&key, ONE_YEAR, ONE_YEAR);
         Ok(id)
     } else {
         Err(Error::NoIdentityFound)
@@ -172,73 +136,30 @@ pub fn extend_token_ttl(env: &Env, token_id: u64) -> Result<(), Error> {
     Ok(())
 }
 
-pub fn set_has_identity(env: &Env, holder: &Address, has: bool) {
-    let key = (Symbol::new(env, "HAS"), holder.clone());
+pub fn set_has_identity(env: &Env, soul_id: u32, has: bool) {
+    let key = (Symbol::new(env, "HAS"), soul_id);
     env.storage().persistent().set(&key, &has);
-    env.storage()
-        .persistent()
-        .extend_ttl(&key, ONE_YEAR, ONE_YEAR);
+    env.storage().persistent().extend_ttl(&key, ONE_YEAR, ONE_YEAR);
 }
 
-pub fn has_identity(env: &Env, holder: &Address) -> bool {
-    let key = (Symbol::new(env, "HAS"), holder.clone());
+pub fn has_identity(env: &Env, soul_id: u32) -> bool {
+    let key = (Symbol::new(env, "HAS"), soul_id);
     let has: Option<bool> = env.storage().persistent().get(&key);
     if has.is_some() {
-        env.storage()
-            .persistent()
-            .extend_ttl(&key, ONE_YEAR, ONE_YEAR);
+        env.storage().persistent().extend_ttl(&key, ONE_YEAR, ONE_YEAR);
     }
     has.unwrap_or(false)
 }
 
-pub fn get_nonce(env: &Env, user: &Address) -> u64 {
-    let key = (Symbol::new(env, "NON"), user.clone());
+pub fn get_nonce(env: &Env, soul_id: u32) -> u64 {
+    let key = (Symbol::new(env, "NON"), soul_id);
     env.storage().temporary().get(&key).unwrap_or(0u64)
 }
 
-pub fn increment_nonce(env: &Env, user: &Address) {
-    let current = get_nonce(env, user);
-    let key = (Symbol::new(env, "NON"), user.clone());
+pub fn increment_nonce(env: &Env, soul_id: u32) {
+    let current = get_nonce(env, soul_id);
+    let key = (Symbol::new(env, "NON"), soul_id);
     env.storage().temporary().set(&key, &(current + 1));
-    env.storage()
-        .temporary()
-        .extend_ttl(&key, THIRTY_DAYS, THIRTY_DAYS);
+    env.storage().temporary().extend_ttl(&key, THIRTY_DAYS, THIRTY_DAYS);
 }
 
-#[cfg(test)]
-mod test {
-    use super::*;
-    use crate::types::{InteropConfig, InteropProtocol};
-    use soroban_sdk::testutils::Address as _;
-
-    #[test]
-    fn test_interop_config_storage() {
-        let env = Env::default();
-        let contract_id = env.register(crate::GithubIdentityContract, ());
-
-        let adapter = Address::generate(&env);
-        let config = InteropConfig {
-            active_protocol: InteropProtocol::Axelar,
-            adapter_address: adapter.clone(),
-        };
-
-        env.as_contract(&contract_id, || {
-            set_interop_config(&env, &config);
-            let stored = get_interop_config(&env).unwrap();
-
-            assert_eq!(stored.active_protocol, InteropProtocol::Axelar);
-            assert_eq!(stored.adapter_address, adapter);
-        });
-    }
-
-    #[test]
-    fn test_get_interop_config_not_initialized() {
-        let env = Env::default();
-        let contract_id = env.register(crate::GithubIdentityContract, ());
-
-        env.as_contract(&contract_id, || {
-            let res = get_interop_config(&env);
-            assert!(res.is_err());
-        });
-    }
-}

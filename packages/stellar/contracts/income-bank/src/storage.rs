@@ -1,7 +1,7 @@
 use soroban_sdk::{Address, Env, Symbol};
 
 use crate::types::{
-    AxelarConfig, Config, DataKey, Error, IncomeData, InteropConfig, LayerZeroConfig,
+    Config, DataKey, Error, IncomeData,
 };
 
 const KEY_CONFIG: &str = "CONFIG";
@@ -13,20 +13,18 @@ const THIRTY_DAYS: u32 = 30 * DAY_IN_LEDGERS;
 const ONE_YEAR: u32 = 365 * DAY_IN_LEDGERS;
 
 pub fn set_config(env: &Env, config: &Config) {
-    let key = &KEY_CONFIG;
-    env.storage().persistent().set(key, config);
+    env.storage().persistent().set(&DataKey::Config, config);
     env.storage()
         .persistent()
-        .extend_ttl(key, ONE_YEAR, ONE_YEAR);
+        .extend_ttl(&DataKey::Config, ONE_YEAR, ONE_YEAR);
 }
 
 pub fn get_config(env: &Env) -> Result<Config, Error> {
-    let key = &KEY_CONFIG;
-    let config: Option<Config> = env.storage().persistent().get(key);
+    let config: Option<Config> = env.storage().persistent().get(&DataKey::Config);
     if let Some(c) = config {
         env.storage()
             .persistent()
-            .extend_ttl(key, ONE_YEAR, ONE_YEAR);
+            .extend_ttl(&DataKey::Config, ONE_YEAR, ONE_YEAR);
         Ok(c)
     } else {
         Err(Error::NotInitialized)
@@ -50,28 +48,6 @@ pub fn get_soul_contract(env: &Env) -> Result<Address, Error> {
     }
 }
 
-pub fn get_interop_config(env: &Env) -> Result<InteropConfig, Error> {
-    env.storage()
-        .instance()
-        .get(&DataKey::InteropConfig)
-        .ok_or(Error::NotInitialized)
-}
-
-pub fn set_interop_config(env: &Env, config: &InteropConfig) {
-    env.storage()
-        .instance()
-        .set(&DataKey::InteropConfig, config);
-}
-
-pub fn set_axelar_config(env: &Env, config: &AxelarConfig) {
-    env.storage().instance().set(&DataKey::AxelarConfig, config);
-}
-
-pub fn set_layerzero_config(env: &Env, config: &LayerZeroConfig) {
-    env.storage()
-        .instance()
-        .set(&DataKey::LayerZeroConfig, config);
-}
 
 pub fn set_token_data(env: &Env, token_id: u64, data: &IncomeData) {
     let key = (Symbol::new(env, "TOK"), token_id);
@@ -94,16 +70,16 @@ pub fn get_token_data(env: &Env, token_id: u64) -> Result<IncomeData, Error> {
     }
 }
 
-pub fn set_holder_token(env: &Env, holder: &Address, token_id: u64) {
-    let key = (Symbol::new(env, "HLD"), holder.clone());
+pub fn set_holder_token(env: &Env, soul_id: u32, token_id: u64) {
+    let key = (Symbol::new(env, "HLD"), soul_id);
     env.storage().persistent().set(&key, &token_id);
     env.storage()
         .persistent()
         .extend_ttl(&key, ONE_YEAR, ONE_YEAR);
 }
 
-pub fn get_holder_token(env: &Env, holder: &Address) -> Result<u64, Error> {
-    let key = (Symbol::new(env, "HLD"), holder.clone());
+pub fn get_holder_token(env: &Env, soul_id: u32) -> Result<u64, Error> {
+    let key = (Symbol::new(env, "HLD"), soul_id);
     let token_id: Option<u64> = env.storage().persistent().get(&key);
     if let Some(id) = token_id {
         env.storage()
@@ -155,16 +131,16 @@ pub fn update_token_data(env: &Env, token_id: u64, data: &IncomeData) -> Result<
     Ok(())
 }
 
-pub fn set_has_identity(env: &Env, holder: &Address, has: bool) {
-    let key = (Symbol::new(env, "HAS"), holder.clone());
+pub fn set_has_identity(env: &Env, soul_id: u32, has: bool) {
+    let key = (Symbol::new(env, "HAS"), soul_id);
     env.storage().persistent().set(&key, &has);
     env.storage()
         .persistent()
         .extend_ttl(&key, ONE_YEAR, ONE_YEAR);
 }
 
-pub fn has_identity(env: &Env, holder: &Address) -> bool {
-    let key = (Symbol::new(env, "HAS"), holder.clone());
+pub fn has_identity(env: &Env, soul_id: u32) -> bool {
+    let key = (Symbol::new(env, "HAS"), soul_id);
     let has: Option<bool> = env.storage().persistent().get(&key);
     if has.is_some() {
         env.storage()
@@ -174,14 +150,14 @@ pub fn has_identity(env: &Env, holder: &Address) -> bool {
     has.unwrap_or(false)
 }
 
-pub fn get_nonce(env: &Env, user: &Address) -> u64 {
-    let key = (Symbol::new(env, "NON"), user.clone());
+pub fn get_nonce(env: &Env, soul_id: u32) -> u64 {
+    let key = (Symbol::new(env, "NON"), soul_id);
     env.storage().temporary().get(&key).unwrap_or(0u64)
 }
 
-pub fn increment_nonce(env: &Env, user: &Address) {
-    let current = get_nonce(env, user);
-    let key = (Symbol::new(env, "NON"), user.clone());
+pub fn increment_nonce(env: &Env, soul_id: u32) {
+    let current = get_nonce(env, soul_id);
+    let key = (Symbol::new(env, "NON"), soul_id);
     env.storage().temporary().set(&key, &(current + 1));
     env.storage()
         .temporary()

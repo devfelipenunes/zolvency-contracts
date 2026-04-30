@@ -5,14 +5,47 @@ use soroban_sdk::{contract, contracterror, contractimpl, contracttype, Address, 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DataKey {
+    SoulLocks(u32),
+    SoulBlacklist(u32),
     Admin,
     PendingAdmin,
     Signer,
     TokenCount,        // Contador de tokens registrados
     TokenId(u32),      // Mapeamento de ID -> Endereço do Contrato
     TokenExists(Address), // Mapeamento de Endereço -> ID (para evitar duplicatas rápidas)
-    Locks(Address),
-    Blacklist(Address),
+    AxelarConfig,
+    InteropConfig,
+}
+
+#[contracttype]
+#[derive(Clone, Debug)]
+pub struct AxelarConfig {
+    pub gateway: Address,
+    pub gas_service: Address,
+    pub gas_token: Address,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum InteropProtocol {
+    None,
+    Axelar,
+    Wormhole,
+}
+
+#[contracttype]
+#[derive(Clone, Debug)]
+pub struct InteropConfig {
+    pub active_protocol: InteropProtocol,
+    pub adapter_address: Address,
+}
+
+#[contracttype]
+#[derive(Clone, Debug)]
+pub struct CrossChainParams {
+    pub destination_chain: soroban_sdk::String,
+    pub destination_address: soroban_sdk::String,
+    pub user_destination_address: soroban_sdk::Bytes,
 }
 
 #[contracterror]
@@ -23,6 +56,7 @@ pub enum Error {
     NotAdmin = 2,
     NotPendingAdmin = 3,
     NotInitialized = 4,
+    SoulBlocked = 5,
 }
 
 #[contracttype]
@@ -83,46 +117,58 @@ impl ZolvencyRegistry {
         Ok(())
     }
 
-    pub fn get_user_reputation(env: Env, user: Address) -> Map<Symbol, u64> {
-        if Self::is_blacklisted(env.clone(), user.clone()) {
+    pub fn get_soul_reputation(env: Env, soul_id: u32, tokens: Option<Vec<Address>>) -> Map<Symbol, u64> {
+        if Self::is_soul_blacklisted(env.clone(), soul_id) || Self::is_soul_locked(env.clone(), soul_id) {
             return Map::new(&env);
         }
 
-        let count: u32 = env.storage().persistent().get(&DataKey::TokenCount).unwrap_or(0);
         let mut reputation = Map::new(&env);
 
-        for i in 0..count {
-            if let Some(token_address) = env.storage().persistent().get::<_, Address>(&DataKey::TokenId(i)) {
-                // Tenta chamar has_identity(user) de forma segura
-                let has_res = env.try_invoke_contract::<bool, soroban_sdk::Error>(
-                    &token_address,
-                    &Symbol::new(&env, "has_identity"),
-                    Vec::from_array(&env, [user.clone().into_val(&env)]),
-                );
-
-                if let Ok(Ok(true)) = has_res {
-                    // Tenta buscar o token_id
-                    let id_res = env.try_invoke_contract::<u64, soroban_sdk::Error>(
-                        &token_address,
-                        &Symbol::new(&env, "get_user_token"),
-                        Vec::from_array(&env, [user.clone().into_val(&env)]),
-                    );
-
-                    // Tenta buscar o token_type
-                    let type_res = env.try_invoke_contract::<Symbol, soroban_sdk::Error>(
-                        &token_address,
-                        &Symbol::new(&env, "get_token_type"),
-                        Vec::new(&env),
-                    );
-
-                    if let (Ok(Ok(token_id)), Ok(Ok(token_type))) = (id_res, type_res) {
-                        reputation.set(token_type, token_id);
+        match tokens {
+            Some(token_list) => {
+                for token_address in token_list {
+                    Self::query_token_reputation(&env, soul_id, &token_address, &mut reputation);
+                }
+            },
+            None => {
+                let count: u32 = env.storage().persistent().get(&DataKey::TokenCount).unwrap_or(0);
+                let limit = if count > 20 { 20 } else { count };
+                
+                for i in 0..limit {
+                    if let Some(token_address) = env.storage().persistent().get::<_, Address>(&DataKey::TokenId(i)) {
+                        Self::query_token_reputation(&env, soul_id, &token_address, &mut reputation);
                     }
                 }
             }
         }
 
         reputation
+    }
+
+    fn query_token_reputation(env: &Env, soul_id: u32, token_address: &Address, reputation: &mut Map<Symbol, u64>) {
+        let has_res = env.try_invoke_contract::<bool, soroban_sdk::Error>(
+            token_address,
+            &Symbol::new(env, "has_identity"),
+            Vec::from_array(env, [soul_id.into_val(env)]),
+        );
+
+        if let Ok(Ok(true)) = has_res {
+            let id_res = env.try_invoke_contract::<u64, soroban_sdk::Error>(
+                token_address,
+                &Symbol::new(env, "get_user_token"),
+                Vec::from_array(env, [soul_id.into_val(env)]),
+            );
+
+            let type_res = env.try_invoke_contract::<Symbol, soroban_sdk::Error>(
+                token_address,
+                &Symbol::new(env, "get_token_type"),
+                Vec::new(env),
+            );
+
+            if let (Ok(Ok(token_id)), Ok(Ok(token_type))) = (id_res, type_res) {
+                reputation.set(token_type, token_id);
+            }
+        }
     }
 
     pub fn get_signer(env: Env) -> Result<Address, Error> {
@@ -165,15 +211,18 @@ impl ZolvencyRegistry {
         Ok(())
     }
 
-    pub fn lock_reputation(env: Env, caller: Address, user: Address, unlock_timestamp: u64) {
-        caller.require_auth();
-        let key = DataKey::Locks(user.clone());
+    pub fn lock_soul_reputation(env: Env, admin: Address, soul_id: u32, unlock_timestamp: u64) -> Result<(), Error> {
+        admin.require_auth();
+        Self::assert_admin(&env, &admin)?;
+        
+        let key = DataKey::SoulLocks(soul_id);
         env.storage().persistent().set(&key, &unlock_timestamp);
         Self::extend_persistent(&env, &key);
+        Ok(())
     }
 
-    pub fn is_locked(env: Env, user: Address) -> bool {
-        let key = DataKey::Locks(user);
+    pub fn is_soul_locked(env: Env, soul_id: u32) -> bool {
+        let key = DataKey::SoulLocks(soul_id);
         if let Some(unlock_timestamp) = env.storage().persistent().get::<_, u64>(&key) {
             Self::extend_persistent(&env, &key);
             env.ledger().timestamp() < unlock_timestamp
@@ -182,20 +231,20 @@ impl ZolvencyRegistry {
         }
     }
 
-    pub fn apply_slashing(env: Env, admin: Address, user: Address) -> Result<(), Error> {
+    pub fn apply_soul_slashing(env: Env, admin: Address, soul_id: u32) -> Result<(), Error> {
         admin.require_auth();
         let stored_admin: Address = env.storage().persistent().get(&DataKey::Admin).ok_or(Error::NotInitialized)?;
         if admin != stored_admin {
             return Err(Error::NotAdmin);
         }
-        let key = DataKey::Blacklist(user.clone());
+        let key = DataKey::SoulBlacklist(soul_id);
         env.storage().persistent().set(&key, &true);
         Self::extend_persistent(&env, &key);
         Ok(())
     }
 
-    pub fn is_blacklisted(env: Env, user: Address) -> bool {
-        let key = DataKey::Blacklist(user);
+    pub fn is_soul_blacklisted(env: Env, soul_id: u32) -> bool {
+        let key = DataKey::SoulBlacklist(soul_id);
         let blacklisted = env.storage().persistent().get(&key).unwrap_or(false);
         if blacklisted {
             Self::extend_persistent(&env, &key);
@@ -209,6 +258,94 @@ impl ZolvencyRegistry {
             &Symbol::new(&env, "get_metadata"),
             Vec::new(&env),
         )
+    }
+
+    // ── Cross-Chain Logic (Centralized) ──
+
+    pub fn set_interop_config(env: Env, admin: Address, config: InteropConfig) -> Result<(), Error> {
+        admin.require_auth();
+        Self::assert_admin(&env, &admin)?;
+        env.storage().persistent().set(&DataKey::InteropConfig, &config);
+        Ok(())
+    }
+
+    pub fn set_axelar_config(env: Env, admin: Address, config: AxelarConfig) -> Result<(), Error> {
+        admin.require_auth();
+        Self::assert_admin(&env, &admin)?;
+        env.storage().persistent().set(&DataKey::AxelarConfig, &config);
+        Ok(())
+    }
+
+    pub fn export_reputation(
+        env: Env,
+        _caller: Address,
+        soul_id: u32,
+        token_address: Address,
+        external_id: soroban_sdk::String,
+        tier: u32,
+        nonce: u64,
+        cross_chain: Option<CrossChainParams>,
+    ) -> Result<(), Error> {
+        token_address.require_auth();
+
+        // 🛡️ Segurança: Impedir exportação se a alma estiver bloqueada ou na blacklist
+        if Self::is_soul_blacklisted(env.clone(), soul_id) || Self::is_soul_locked(env.clone(), soul_id) {
+            return Err(Error::SoulBlocked);
+        }
+
+        // Apenas tokens registrados podem exportar reputação
+        if !env.storage().persistent().has(&DataKey::TokenExists(token_address.clone())) {
+            return Err(Error::NotAdmin); 
+        }
+
+        // Exporta para o adaptador configurado
+        if let Some(cc) = cross_chain {
+            if let Some(interop_config) = env.storage().persistent().get::<_, InteropConfig>(&DataKey::InteropConfig) {
+                if interop_config.active_protocol != InteropProtocol::None {
+                    // Publica um evento interno de exportação
+                    env.events().publish(
+                        (Symbol::new(&env, "reputation_exported"), soul_id),
+                        (token_address.clone(), external_id.clone(), tier, nonce),
+                    );
+
+                    // Tenta buscar o token_type
+                    let token_type: Symbol = match env.try_invoke_contract::<Symbol, soroban_sdk::Error>(
+                        &token_address,
+                        &Symbol::new(&env, "get_token_type"),
+                        Vec::new(&env),
+                    ) {
+                        Ok(Ok(s)) => s,
+                        _ => Symbol::new(&env, "unknown"),
+                    };
+
+                    env.invoke_contract::<()>(
+                        &interop_config.adapter_address,
+                        &Symbol::new(&env, "send"),
+                        (
+                            _caller,
+                            cc.destination_chain,
+                            cc.destination_address,
+                            external_id,
+                            tier,
+                            cc.user_destination_address,
+                            nonce,
+                            token_type,
+                        )
+                            .into_val(&env),
+                    );
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn assert_admin(env: &Env, admin: &Address) -> Result<(), Error> {
+        let stored_admin: Address = env.storage().persistent().get(&DataKey::Admin).ok_or(Error::NotInitialized)?;
+        if stored_admin != *admin {
+            return Err(Error::NotAdmin);
+        }
+        Ok(())
     }
 
     fn extend_persistent(env: &Env, key: &DataKey) {
