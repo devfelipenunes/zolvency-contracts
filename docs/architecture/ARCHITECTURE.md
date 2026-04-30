@@ -23,6 +23,15 @@ Cada Spoke é um contrato Soroban especializado em uma fonte de dados Web2 ou We
 - **Isolamento de Risco:** Um bug no circuito ZK de um Bank-SBT não afeta o funcionamento do GitHub-SBT.
 - **Padronização:** Todos expõem a `ZolvencyTokenTrait` para garantir intercompatibilidade.
 
+### 1.3 A Raiz de Identidade: Zolvency Soul
+Além do Hub & Spoke, o protocolo utiliza um contrato raiz de identidade (`zolvency-soul`). Ele representa o “login”/presença mínima do usuário no ecossistema.
+
+**Invariante operacional:** *sem Soul, sem credencial*.
+
+- O `mint` de credenciais em Spokes deve negar a emissão quando `balance(user) == 0` no contrato Soul.
+- O endereço do contrato Soul é parte da configuração do Spoke (via `initialize` ou setter de admin, dependendo do contrato).
+- A Soul é não-transferível e deve ser “permanente” do ponto de vista de UX: os contratos aplicam estratégia de TTL para evitar expiração por inatividade técnica.
+
 ---
 
 ## 2. Deep Dive: Mecanismos de Proteção (Armor Up)
@@ -53,6 +62,8 @@ O gerenciamento de estado no Soroban é caro e requer manutenção de TTL (Time 
 
 ### Renovação de Estado (TTL Management)
 Implementamos a função `renew_token_ttl(token_id)` que permite que qualquer usuário pague uma taxa pequena em XLM para estender a vida de seu SBT por mais 1 ano (ONE_YEAR constant), garantindo que a reputação não desapareça por inatividade técnica do ledger.
+
+No caso da Soul, o contrato também aplica renovação de TTL no armazenamento `persistent` do usuário (quando presente) e estende TTL de `instance`/code para reduzir risco de expiração do próprio contrato.
 
 ---
 

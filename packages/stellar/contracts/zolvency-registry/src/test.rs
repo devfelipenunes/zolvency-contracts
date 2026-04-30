@@ -1,5 +1,6 @@
 use super::*;
 use soroban_sdk::{
+    contract, contractimpl,
     testutils::Address as _, testutils::Ledger as _, Address, Bytes, BytesN, Env, String, Symbol,
 };
 
@@ -13,14 +14,35 @@ use binance_kyc::{
     RenewalWindow as KycRenewalWindow,
 };
 use uber_income::{
-    IncomePeriod, MintParams as UberMintParams, RenewalWindow as UberRenewalWindow,
-    RevealMode as UberRevealMode, UberIncomeContract, UberIncomeContractClient,
+    IncomePeriod, InitializeParams as UberInitializeParams, MintParams as UberMintParams,
+    RenewalWindow as UberRenewalWindow, RevealMode as UberRevealMode, UberIncomeContract,
+    UberIncomeContractClient,
 };
+
+#[contract]
+pub struct MockSoul;
+
+#[contractimpl]
+impl MockSoul {
+    pub fn set_balance(env: Env, user: Address, balance: u32) {
+        let key = (Symbol::new(&env, "bal"), user);
+        env.storage().instance().set(&key, &balance);
+    }
+
+    pub fn balance(env: Env, user: Address) -> u32 {
+        let key = (Symbol::new(&env, "bal"), user);
+        env.storage().instance().get(&key).unwrap_or(0u32)
+    }
+}
 
 #[test]
 fn test_registry_integration_with_github_token() {
     let env = Env::default();
     env.mock_all_auths();
+
+    // Mock Soul (necessário pro gating do GitHub)
+    let soul_id = env.register(MockSoul, ());
+    let soul_client = MockSoulClient::new(&env, &soul_id);
 
     // 1. Deploy do Registry
     let registry_id = env.register(ZolvencyRegistry, ());
@@ -34,12 +56,17 @@ fn test_registry_integration_with_github_token() {
     let github_id = env.register(GithubIdentityContract, ());
     let github_client = GithubIdentityContractClient::new(&env, &github_id);
 
+    let fee_token = Address::generate(&env);
+    let access_control = Address::generate(&env);
+    let treasury = Address::generate(&env);
+
     github_client.initialize(
         &admin,
         &registry_id,             // registry
-        &Address::generate(&env), // fee_token
-        &Address::generate(&env), // access_control
-        &Address::generate(&env), // treasury
+        &soul_id,                 // soul_contract
+        &fee_token,               // fee_token
+        &access_control,          // access_control
+        &treasury,                // treasury
         &0,                       // mint_fee
     );
 
@@ -48,19 +75,22 @@ fn test_registry_integration_with_github_token() {
 
     // 4. Usuário minta um token no GitHub Contract
     let user = Address::generate(&env);
-    let signature = BytesN::from_array(&env, &[0u8; 64]);
+
+    // habilita soul pro user
+    soul_client.set_balance(&user, &1u32);
 
     let params = MintParams {
         username: String::from_str(&env, "devfelipenunes"),
         external_id: String::from_str(&env, "gh_123"),
-        passkey: None,
-        passkey_signature: None,
+        passkey: Bytes::from_array(&env, &[1u8; 65]),
+        passkey_signature: Bytes::from_array(&env, &[0u8; 64]),
         contributions: 1500u32,
         proof_data: Bytes::new(&env),
         nonce: 0u64,
     };
 
-    github_client.mint(&user, &signature, &params, &None, &None);
+    // assinatura nova: (caller, user, params)
+    github_client.mint(&user, &user, &params);
 
     // 5. Consultar reputação via Registry (O que o SDK fará)
     let reputation = registry_client.get_user_reputation(&user);
@@ -80,6 +110,10 @@ fn test_registry_with_new_tokens() {
     let env = Env::default();
     env.mock_all_auths();
     env.ledger().set_timestamp(1714316400); // 2024-04-28
+
+    // Mock Soul (necessário pro gating dos spokes)
+    let soul_id = env.register(MockSoul, ());
+    let soul_client = MockSoulClient::new(&env, &soul_id);
 
     let registry_id = env.register(ZolvencyRegistry, ());
     let registry_client = ZolvencyRegistryClient::new(&env, &registry_id);
@@ -103,6 +137,9 @@ fn test_registry_with_new_tokens() {
         &false,
     );
 
+    // Configura soul gating
+    bank_client.set_soul_contract(&admin, &soul_id);
+
     let kyc_id = env.register(BinanceKycContract, ());
     let kyc_client = BinanceKycContractClient::new(&env, &kyc_id);
     kyc_client.initialize(
@@ -117,26 +154,34 @@ fn test_registry_with_new_tokens() {
         &false,
     );
 
+    // Configura soul gating
+    kyc_client.set_soul_contract(&admin, &soul_id);
+
     let uber_id = env.register(UberIncomeContract, ());
     let uber_client = UberIncomeContractClient::new(&env, &uber_id);
-    uber_client.initialize(
-        &admin,
-        &registry_id,
-        &Address::generate(&env),
-        &Address::generate(&env),
-        &Address::generate(&env),
-        &0,
-        &0,
-        &0,
-        &0,
-        &false,
-    );
+    let uber_init = UberInitializeParams {
+        admin: admin.clone(),
+        registry: registry_id.clone(),
+        soul_contract: soul_id.clone(),
+        fee_token: Address::generate(&env),
+        access_control: Address::generate(&env),
+        treasury: Address::generate(&env),
+        mint_fee_30: 0,
+        mint_fee_60: 0,
+        mint_fee_90: 0,
+        max_proof_age_seconds: 0,
+        store_proof_data: false,
+    };
+    uber_client.initialize(&uber_init);
 
     registry_client.register_token(&admin, &bank_id);
     registry_client.register_token(&admin, &kyc_id);
     registry_client.register_token(&admin, &uber_id);
 
     let user = Address::generate(&env);
+
+    // habilita soul pro user (mint do bank/kyc/uber usa recipient)
+    soul_client.set_balance(&user, &1u32);
 
     let bank_params = BankMintParams {
         recipient: user.clone(),
@@ -218,6 +263,9 @@ fn test_registry_get_token_metadata() {
     let env = Env::default();
     env.mock_all_auths();
 
+    // Mock Soul (necessário pro gating do bank se usarmos mint em algum momento)
+    let soul_id = env.register(MockSoul, ());
+
     let registry_id = env.register(ZolvencyRegistry, ());
     let registry_client = ZolvencyRegistryClient::new(&env, &registry_id);
 
@@ -239,6 +287,8 @@ fn test_registry_get_token_metadata() {
         &0,
         &false,
     );
+
+    bank_client.set_soul_contract(&admin, &soul_id);
 
     let metadata = registry_client.get_token_metadata(&bank_id);
     assert_eq!(metadata.name, String::from_str(&env, "Zolvency Bank Income"));

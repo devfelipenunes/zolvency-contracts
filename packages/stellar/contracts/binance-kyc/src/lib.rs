@@ -96,6 +96,13 @@ impl BinanceKycContract {
         Ok(())
     }
 
+    pub fn set_soul_contract(env: Env, admin: Address, soul_contract: Address) -> Result<(), Error> {
+        admin.require_auth();
+        Self::assert_admin(&env, &admin)?;
+        storage::set_soul_contract(&env, &soul_contract);
+        Ok(())
+    }
+
     pub fn set_zk_verifier(env: Env, admin: Address, verifier: Option<Address>) -> Result<(), Error> {
         admin.require_auth();
         Self::assert_admin(&env, &admin)?;
@@ -194,6 +201,18 @@ impl BinanceKycContract {
     ) -> Result<u64, Error> {
         admin.require_auth();
         Self::assert_admin(&env, &admin)?;
+
+        let soul_contract = storage::get_soul_contract(&env)?;
+        let res = env.try_invoke_contract::<u32, soroban_sdk::Error>(
+            &soul_contract,
+            &Symbol::new(&env, "balance"),
+            soroban_sdk::vec![&env, params.recipient.clone().into_val(&env)],
+        );
+
+        match res {
+            Ok(Ok(balance)) if balance > 0 => {}
+            _ => return Err(Error::Unauthorized),
+        }
 
         if params.external_id.is_empty() || params.external_id.len() > 64 {
             return Err(Error::InvalidExternalId);

@@ -47,6 +47,33 @@ make test
 make lint && make fmt
 ```
 
+## 🔐 Invariante: “Sem Soul, sem credencial”
+
+O protocolo assume uma identidade raiz (`zolvency-soul`) como pré-requisito para emissão de credenciais (Spokes). Na prática:
+
+- O usuário primeiro “loga” e recebe uma Soul (mint via `relayer` autorizado).
+- Spokes que emitem credenciais (ex: `github-identity`, `uber-income`, `income-bank`, `binance-kyc`) validam Soul no `mint` consultando o contrato Soul (ex: `balance(user) > 0`).
+- O `zolvency-registry` agrega reputação consultando entrypoints padronizados dos spokes.
+
+## 🧪 E2E (Soul-Centric Flow)
+
+O script [scripts/test_e2e_flow.sh](scripts/test_e2e_flow.sh) executa um fluxo de ponta a ponta em testnet:
+
+1) Mint da Soul
+2) Checagem de `balance`
+3) Mint de um spoke (GitHub)
+4) Mint de um spoke (Uber Income)
+
+Pré-requisitos:
+- Um arquivo `.env` com `DEPLOYER_SECRET` e `ADMIN_PUBLIC`
+- IDs de contrato (`SOUL_ID`, `GITHUB_ID`, `UBER_ID`) configurados no próprio script
+
+Execução:
+
+```bash
+bash scripts/test_e2e_flow.sh
+```
+
 ## 🛠️ Como começar
 
 ### Pré-requisitos

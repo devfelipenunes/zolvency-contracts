@@ -100,7 +100,6 @@ impl GithubIdentityContract {
     ) -> u64 {
         caller.require_auth();
 
-        // ── Gating: Soul Check ──
         let config = storage::get_config(&env).unwrap();
         let res = env.try_invoke_contract::<u32, soroban_sdk::Error>(
             &config.soul_contract,
@@ -109,7 +108,7 @@ impl GithubIdentityContract {
         );
 
         match res {
-            Ok(Ok(balance)) if balance > 0 => { /* Soul detected, proceed */ }
+            Ok(Ok(balance)) if balance > 0 => {}
             _ => panic!("Unauthorized: No Soul Token detected. Please login via Passkey."),
         }
 
@@ -135,6 +134,14 @@ impl GithubIdentityContract {
         storage::set_sybil_mapping(&env, &params.external_id, token_id);
 
         token_id
+    }
+
+    pub fn has_identity(env: Env, user: Address) -> bool {
+        storage::has_identity(&env, &user)
+    }
+
+    pub fn get_user_token(env: Env, user: Address) -> u64 {
+        storage::get_holder_token(&env, &user).unwrap()
     }
 
     pub fn upgrade(env: Env, admin: Address, new_wasm_hash: BytesN<32>) -> Result<(), Error> {

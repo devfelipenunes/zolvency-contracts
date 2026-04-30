@@ -15,7 +15,7 @@ echo "🧪 Starting E2E Flow Test for $USER_ADDR..."
 
 # 1. Mint Soul
 echo "1️⃣ Minting Soul..."
-$STELLAR_CLI contract invoke --id "$SOUL_ID" --source "$DEPLOYER_SECRET" --network "$NETWORK" --send yes -- mint --relayer "$ADMIN_PUBLIC" --user "$USER_ADDR" --username "final_test" --passkey 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
+$STELLAR_CLI contract invoke --id "$SOUL_ID" --source "$DEPLOYER_SECRET" --network "$NETWORK" --send yes -- mint --relayer "$ADMIN_PUBLIC" --user "$USER_ADDR" --passkey 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
 
 # 2. Verify Soul
 echo "✅ Verifying Soul Balance..."

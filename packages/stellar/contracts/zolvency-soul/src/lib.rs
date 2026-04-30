@@ -7,12 +7,13 @@ mod storage;
 mod test;
 
 use soroban_sdk::{
-    contract, contractimpl, symbol_short, Address, Env, BytesN,
+    contract, contractimpl, symbol_short, Address, Env, BytesN, Bytes,
 };
 use crate::types::{Error, SoulData, DataKey};
 use crate::storage::{
     get_admin, get_relayer, get_total_souls, increment_total_souls, 
-    set_soul, get_soul_by_id, get_soul_id_by_passkey, extend_instance
+    set_soul, get_soul_by_id, get_soul_id_by_passkey, extend_instance,
+    remove_passkey_mapping
 };
 
 #[contract]
@@ -91,6 +92,56 @@ impl ZolvencySoulContract {
     pub fn get_soul_id_by_passkey(env: Env, passkey: BytesN<65>) -> Option<u32> {
         extend_instance(&env);
         get_soul_id_by_passkey(&env, &passkey)
+    }
+
+    pub fn get_soul_by_passkey(env: Env, passkey: BytesN<65>) -> Option<SoulData> {
+        extend_instance(&env);
+        let id = crate::storage::get_soul_id_by_passkey(&env, &passkey)?;
+        crate::storage::get_soul_by_id(&env, id)
+    }
+
+    pub fn recover_soul(
+        env: Env,
+        relayer: Address,
+        old_passkey: BytesN<65>,
+        new_passkey: BytesN<65>,
+        recovery_signature: BytesN<64>,
+    ) -> Result<(), Error> {
+        relayer.require_auth();
+        extend_instance(&env);
+        
+        let stored_relayer = get_relayer(&env)?;
+        if relayer != stored_relayer {
+            return Err(Error::NotAuthorized);
+        }
+
+        let soul_id = crate::storage::get_soul_id_by_passkey(&env, &old_passkey).ok_or(Error::SoulNotFound)?;
+        let mut soul_data = crate::storage::get_soul_by_id(&env, soul_id).unwrap();
+
+        // Verify recovery signature: sign(hash(old_passkey + new_passkey))
+        let mut msg = Bytes::new(&env);
+        msg.append(&old_passkey.clone().into());
+        msg.append(&new_passkey.clone().into());
+        let msg_hash = env.crypto().sha256(&msg);
+
+        // This is the core sovereign recovery check
+        env.crypto().secp256r1_verify(
+            &soul_data.recovery_pubkey,
+            &msg_hash,
+            &recovery_signature
+        );
+
+        // Update mappings
+        remove_passkey_mapping(&env, &old_passkey);
+        soul_data.passkey = new_passkey.clone();
+        set_soul(&env, &soul_data);
+
+        env.events().publish(
+            (symbol_short!("soul"), symbol_short!("recovered"), soul_id),
+            new_passkey,
+        );
+
+        Ok(())
     }
 
     pub fn update_relayer(env: Env, admin: Address, new_relayer: Address) -> Result<(), Error> {

@@ -15,6 +15,7 @@ itoa = "1.0"
 [dev-dependencies]
 soroban-sdk = { version = "22.0.1", features = ["testutils"] }
 zolvency-registry = { path = "../zolvency-registry", features = ["testutils"] }
+zolvency-soul = { path = "../zolvency-soul", features = ["testutils"] }
 
 [features]
 testutils = ["soroban-sdk/testutils"]

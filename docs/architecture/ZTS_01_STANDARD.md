@@ -55,6 +55,22 @@ Reputação é dinâmica. Um Spoke DEVE implementar uma lógica de expiração (
 ### 3.3 Registry Integration
 Ao ser inicializado, um Spoke DEVE registrar seu endereço no `ZolvencyRegistry` central para ser incluído na agregação global de score.
 
+### 3.4 Registry-Facing Entry Points (Obrigatório)
+Além da `ZolvencyTokenTrait`, um Spoke DEVE expor entrypoints de consulta simples para permitir que o `ZolvencyRegistry` descubra rapidamente se o usuário possui um token e, em caso afirmativo, qual é o `token_id`.
+
+Interface mínima:
+
+- `has_identity(env, user: Address) -> bool`
+- `get_user_token(env, user: Address) -> u64`
+
+Observação: `get_user_token` pode falhar/panicar quando `has_identity` é `false`. O Registry deve consultar `has_identity` primeiro.
+
+### 3.5 Soul Gating (Recomendado)
+Para manter o padrão de “login” e reduzir spam/Sybil, recomenda-se que Spokes bloqueiem o `mint` sem Soul:
+
+- O Spoke consulta o contrato Soul configurado e exige `balance(user) > 0`.
+- O endereço do contrato Soul deve ser configurável (em `initialize` ou via setter de admin) para permitir evolução/upgrade do ecossistema.
+
 ---
 
 ## 4. Estrutura de Metadados (ZTS-02)

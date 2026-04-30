@@ -6,6 +6,8 @@ use soroban_sdk::{
 	BytesN, Env, FromVal, String, Symbol,
 };
 
+use zolvency_soul::{ZolvencySoulContract, ZolvencySoulContractClient};
+
 #[contract]
 pub struct MockAdapter;
 
@@ -48,12 +50,22 @@ fn setup(store_proof_data: bool) -> TestEnv {
         env.mock_all_auths();
         env.ledger().set_timestamp(1714316400);
 
-        let admin = Address::generate(&env);	let registry = Address::generate(&env);
+	let admin = Address::generate(&env);
+	let registry = Address::generate(&env);
 	let fee_token = Address::generate(&env);
 	let access_control = Address::generate(&env);
 	let treasury = Address::generate(&env);
 
+
+	let soul_admin = admin.clone();
+	let soul_relayer = Address::generate(&env);
+	let soul_contract_id = env.register(ZolvencySoulContract, ());
+	let soul_client = ZolvencySoulContractClient::new(&env, &soul_contract_id);
+	let _ = soul_client.initialize(&soul_admin, &soul_relayer);
+
 	let recipient = Address::generate(&env);
+	let passkey = BytesN::from_array(&env, &[0u8; 32]);
+	let _ = soul_client.mint(&soul_relayer, &recipient, &passkey);
 	let contract_id = env.register(BinanceKycContract, ());
 	let client: BinanceKycContractClient<'static> = unsafe {
 		core::mem::transmute(BinanceKycContractClient::new(&env, &contract_id))
@@ -70,6 +82,8 @@ fn setup(store_proof_data: bool) -> TestEnv {
 		&0,
 		&store_proof_data,
 	);
+
+	client.set_soul_contract(&admin, &soul_contract_id);
 
 	TestEnv {
 		env,

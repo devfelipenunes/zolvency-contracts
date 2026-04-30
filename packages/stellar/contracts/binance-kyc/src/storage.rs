@@ -6,6 +6,7 @@ use crate::types::{
 
 const KEY_CONFIG: &str = "CONFIG";
 const KEY_TOKEN_COUNTER: &str = "TOKEN_CTR";
+const KEY_SOUL_CONTRACT: &str = "SOUL";
 
 const DAY_IN_LEDGERS: u32 = 17_280;
 const THIRTY_DAYS: u32 = 30 * DAY_IN_LEDGERS;
@@ -27,6 +28,23 @@ pub fn get_config(env: &Env) -> Result<Config, Error> {
             .persistent()
             .extend_ttl(key, ONE_YEAR, ONE_YEAR);
         Ok(c)
+    } else {
+        Err(Error::NotInitialized)
+    }
+}
+
+pub fn set_soul_contract(env: &Env, soul_contract: &Address) {
+    let key = &KEY_SOUL_CONTRACT;
+    env.storage().persistent().set(key, soul_contract);
+    env.storage().persistent().extend_ttl(key, ONE_YEAR, ONE_YEAR);
+}
+
+pub fn get_soul_contract(env: &Env) -> Result<Address, Error> {
+    let key = &KEY_SOUL_CONTRACT;
+    let soul_contract: Option<Address> = env.storage().persistent().get(key);
+    if let Some(addr) = soul_contract {
+        env.storage().persistent().extend_ttl(key, ONE_YEAR, ONE_YEAR);
+        Ok(addr)
     } else {
         Err(Error::NotInitialized)
     }

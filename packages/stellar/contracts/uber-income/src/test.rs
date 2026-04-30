@@ -7,6 +7,22 @@ use soroban_sdk::{
 };
 
 #[contract]
+pub struct MockSoul;
+
+#[contractimpl]
+impl MockSoul {
+	pub fn set_balance(env: Env, user: Address, balance: u32) {
+		let key = (Symbol::new(&env, "bal"), user);
+		env.storage().instance().set(&key, &balance);
+	}
+
+	pub fn balance(env: Env, user: Address) -> u32 {
+		let key = (Symbol::new(&env, "bal"), user);
+		env.storage().instance().get(&key).unwrap_or(0u32)
+	}
+}
+
+#[contract]
 pub struct MockAdapter;
 
 #[contractimpl]
@@ -54,23 +70,34 @@ fn setup(store_proof_data: bool) -> TestEnv {
 	let treasury = Address::generate(&env);
 
 	let recipient = Address::generate(&env);
+
+
+	let soul_contract = env.register(MockSoul, ());
+	let soul_client: MockSoulClient<'static> = unsafe {
+		core::mem::transmute(MockSoulClient::new(&env, &soul_contract))
+	};
+	soul_client.set_balance(&recipient, &1u32);
+
 	let contract_id = env.register(UberIncomeContract, ());
 	let client: UberIncomeContractClient<'static> = unsafe {
 		core::mem::transmute(UberIncomeContractClient::new(&env, &contract_id))
 	};
 
-	client.initialize(
-		&admin,
-		&registry,
-		&fee_token,
-		&access_control,
-		&treasury,
-		&0,
-		&0,
-		&0,
-		&86400,
-		&store_proof_data,
-	);
+	let init_params = crate::types::InitializeParams {
+		admin: admin.clone(),
+		registry,
+		soul_contract,
+		fee_token,
+		access_control,
+		treasury,
+		mint_fee_30: 0,
+		mint_fee_60: 0,
+		mint_fee_90: 0,
+		max_proof_age_seconds: 86400,
+		store_proof_data,
+	};
+
+	client.initialize(&init_params);
 
 	TestEnv {
 		env,

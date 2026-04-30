@@ -17,6 +17,7 @@ pub use messenger::MessengerClient;
 pub use types::{
     CrossChainParams, Error, IncomePeriod, InteropConfig, InteropProtocol, MintParams, RenewalWindow,
     RevealMode, TokenMetadata, UberIncomeData, UpdateParams,
+    InitializeParams,
 };
 
 #[contract]
@@ -202,7 +203,6 @@ impl UberIncomeContract {
         admin.require_auth();
         Self::assert_admin(&env, &admin)?;
 
-        // ── Gating: Soul Check ──
         let config = storage::get_config(&env)?;
         let res = env.try_invoke_contract::<u32, soroban_sdk::Error>(
             &config.soul_contract,
@@ -211,7 +211,7 @@ impl UberIncomeContract {
         );
 
         match res {
-            Ok(Ok(balance)) if balance > 0 => { /* Soul detected, proceed */ }
+            Ok(Ok(balance)) if balance > 0 => {}
             _ => panic!("Unauthorized: No Soul Token detected. Please login via Passkey."),
         }
 

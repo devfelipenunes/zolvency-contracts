@@ -28,6 +28,7 @@ GitHub Identity issues non-transferable (soulbound) NFTs that encode a developer
 - Tier upgrades via `update_token` as contributions grow
 - On-chain SVG metadata, no external dependency
 - Nonce-based replay protection on every mint
+- Mint protegido por Soul gating (requer `zolvency-soul` configurado)
 
 ---
 
@@ -116,6 +117,9 @@ stellar contract invoke \
   --source <ADMIN_SECRET> \
   -- initialize \
   --admin <ADMIN_ADDRESS> \
+  --registry <REGISTRY_ADDRESS> \
+  --soul_contract <SOUL_CONTRACT_ADDRESS> \
+  --fee_token <FEE_TOKEN_ADDRESS> \
   --access_control <ACCESS_CONTROL_ADDRESS> \
   --treasury <TREASURY_ADDRESS> \
   --mint_fee 1000000
@@ -133,6 +137,9 @@ Sets up the contract. Can only be called once.
 | Param | Type | Description |
 |-------|------|-------------|
 | `admin` | `Address` | Admin for configuration changes |
+| `registry` | `Address` | Zolvency Registry contract |
+| `soul_contract` | `Address` | Zolvency Soul contract (used for gating) |
+| `fee_token` | `Address` | Token used to charge fees |
 | `access_control` | `Address` | Access control contract |
 | `treasury` | `Address` | Fee recipient |
 | `mint_fee` | `i128` | Mint fee in stroops (0 = free) |
@@ -142,17 +149,27 @@ Sets up the contract. Can only be called once.
 #### `mint`
 Issues a new identity token to the caller.
 
+Mint requires Soul presence: the contract calls `balance(user)` on the configured `soul_contract` and reverts if `balance == 0`.
+
 | Param | Type | Description |
 |-------|------|-------------|
-| `caller` | `Address` | Address receiving the token |
-| `signature` | `BytesN<64>` | ECDSA signature from authorized server |
-| `username` | `String` | GitHub username |
-| `contributions` | `u32` | Total GitHub contributions |
-| `proof_data` | `Bytes` | zkTLS proof |
-| `referrer` | `Option<Address>` | Optional referrer (future revenue split) |
-| `nonce` | `u64` | Must match `get_nonce(caller)` |
+| `caller` | `Address` | Transaction signer |
+| `user` | `Address` | Address receiving the token |
+| `params` | `MintParams` | Packed mint fields |
 
 Returns the new `token_id: u64`.
+
+`MintParams` fields:
+
+| Field | Type | Notes |
+|------|------|------|
+| `username` | `String` | GitHub username |
+| `external_id` | `String` | Unique external identifier |
+| `passkey` | `Bytes` | Passkey public key bytes |
+| `passkey_signature` | `Bytes` | Signature bytes |
+| `contributions` | `u32` | Total contributions |
+| `proof_data` | `Bytes` | zkTLS/attestation payload |
+| `nonce` | `u64` | Replay protection |
 
 ---
 
