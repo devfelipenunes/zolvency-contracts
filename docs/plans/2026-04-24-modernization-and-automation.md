@@ -78,8 +78,8 @@ git commit -m "ci: add github actions pipeline for rust checks and tests"
 .PHONY: build test fmt lint clean deploy-testnet
 
 # Configurações
-WASM_IDENTITY=packages/stellar/contracts/github-identity/target/wasm32-unknown-unknown/release/github_identity.wasm
-WASM_REGISTRY=packages/stellar/contracts/zolvency-registry/target/wasm32-unknown-unknown/release/zolvency_registry.wasm
+WASM_IDENTITY=contracts/github-identity/target/wasm32-unknown-unknown/release/github_identity.wasm
+WASM_REGISTRY=contracts/zolvency-registry/target/wasm32-unknown-unknown/release/zolvency_registry.wasm
 
 build:
 	@echo "🔨 Building contracts..."
@@ -164,7 +164,7 @@ git commit -m "refactor: remove hardcoded contract IDs from scripts"
 ### Task 4: Suporte a Upgrades (github-identity)
 
 **Files:**
-- Modify: `packages/stellar/contracts/github-identity/src/lib.rs`
+- Modify: `contracts/github-identity/src/lib.rs`
 
 - [ ] **Step 1: Adicionar função de upgrade**
 
@@ -187,6 +187,6 @@ Expected: Sucesso.
 - [ ] **Step 3: Commit Final**
 
 ```bash
-git add packages/stellar/contracts/github-identity/src/lib.rs
+git add contracts/github-identity/src/lib.rs
 git commit -m "feat: add upgrade functionality to github-identity contract"
 ```

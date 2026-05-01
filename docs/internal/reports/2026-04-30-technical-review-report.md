@@ -23,7 +23,7 @@ No contrato `zolvency-soul`, a função `recover_soul` remove o mapeamento da `o
 - **Recomendação:** Adicionar `require(old_passkey != new_passkey)` e verificar se a nova passkey já está em uso.
 
 ### 2.3 Stellar: Registry Consistency (Severity: MEDIUM)
-O `ZolvencyRegistry` ainda utiliza o termo `Address` em alguns contextos de travamento, embora tenha sido atualizado para suportar `SoulID`.
+O `Nexus` ainda utiliza o termo `Address` em alguns contextos de travamento, embora tenha sido atualizado para suportar `SoulID`.
 - **Vulnerabilidade:** Inconsistência de dados entre contratos que usam `Address` vs `SoulID` pode levar a falhas na agregação de score (`get_soul_reputation`).
 - **Recomendação:** Padronizar todos os mapeamentos de reputação para `SoulID` e garantir que o `is_soul_locked` seja consultado por todos os Spokes antes da emissão.
 

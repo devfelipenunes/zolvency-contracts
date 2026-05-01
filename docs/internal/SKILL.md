@@ -46,8 +46,8 @@ O protocolo oferece suporte a segurança baseada em hardware via WebAuthn/Passke
 O repositório é gerenciado como um Rust Workspace para manter a modularidade.
 
 - **Estrutura de Pastas:**
-    - `packages/stellar/contracts/`: Contratos Soroban.
-    - `packages/evm/`: Contratos Solidity (Foundry).
+    - `contracts/`: Contratos Soroban.
+    - `verifiers/evm/`: Contratos Solidity (Foundry).
 - **Tipagem:** Utilize `Option<T>` em vez de placeholders de bytes vazios para campos opcionais.
 - **Build:** Utilize o `Makefile` na raiz para garantir compilações determinísticas: `make build`.
 

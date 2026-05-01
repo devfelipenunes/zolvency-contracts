@@ -9,7 +9,7 @@
 ---
 
 ## 1. Abstract
-O ZTS-01 define a interface e o comportamento obrigatório para qualquer contrato inteligente que deseje atuar como um **Spoke** (emissor de reputação) dentro do ecossistema Zolvency na rede Stellar. A conformidade com este padrão garante que o `ZolvencyRegistry` possa agregar o score do usuário e que protocolos de Lending possam realizar underwriting cross-asset de forma uniforme.
+O ZTS-01 define a interface e o comportamento obrigatório para qualquer contrato inteligente que deseje atuar como um **Spoke** (emissor de reputação) dentro do ecossistema Zolvency na rede Stellar. A conformidade com este padrão garante que o `Nexus` possa agregar o score do usuário e que protocolos de Lending possam realizar underwriting cross-asset de forma uniforme.
 
 ---
 
@@ -53,10 +53,10 @@ Reputação é dinâmica. Um Spoke DEVE implementar uma lógica de expiração (
 - Após este período, `is_valid` deve retornar `false` ou o score deve sofrer decaimento linear até que uma nova prova seja apresentada.
 
 ### 3.3 Registry Integration
-Ao ser inicializado, um Spoke DEVE registrar seu endereço no `ZolvencyRegistry` central para ser incluído na agregação global de score.
+Ao ser inicializado, um Spoke DEVE registrar seu endereço no `Nexus` central para ser incluído na agregação global de score.
 
 ### 3.4 Registry-Facing Entry Points (Obrigatório)
-Além da `ZolvencyTokenTrait`, um Spoke DEVE expor entrypoints de consulta simples para permitir que o `ZolvencyRegistry` descubra rapidamente se o usuário possui um token e, em caso afirmativo, qual é o `token_id`.
+Além da `ZolvencyTokenTrait`, um Spoke DEVE expor entrypoints de consulta simples para permitir que o `Nexus` descubra rapidamente se o usuário possui um token e, em caso afirmativo, qual é o `token_id`.
 
 Interface mínima:
 

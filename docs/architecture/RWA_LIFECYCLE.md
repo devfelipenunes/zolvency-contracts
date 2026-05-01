@@ -51,7 +51,7 @@ Quando um ativo RWA entra em inadimplência no mundo físico, o Zolvency atua co
 
 ### 3.1 Prova de Liquidação (PoL)
 Se um imóvel é retomado por falta de pagamento:
-- O protocolo de Lending envia uma **Prova de Liquidação** (assinatura legal ou decisão de oráculo judicial) para o `ZolvencyRegistry`.
+- O protocolo de Lending envia uma **Prova de Liquidação** (assinatura legal ou decisão de oráculo judicial) para o `Nexus`.
 - O Hub marca o SBT do ativo como `:Seized`.
 - **Efeito:** O ativo perde toda a sua capacidade de gerar novos créditos e sua reputação cai para zero, impedindo o proprietário original de reutilizá-lo como colateral em qualquer lugar do ecossistema Stellar.
 

@@ -4,7 +4,7 @@
 
 **Goal:** Corrigir fragilidades de governança (Two-Step Admin), implementar Reputation Lock/Slashing no Registry, integrar validação de provas ZK (Interface), adicionar gestão de estado (TTL Renewal) e tornar os scripts de deploy idempotentes.
 
-**Architecture:** Adição de Two-Step Admin e funções de Lock/Slashing no `ZolvencyRegistry`. No `GithubIdentityContract`, integração de um verificador ZK externo opcional durante o `mint` e adição de função pública de renovação de TTL. Refatoração do script bash de deploy.
+**Architecture:** Adição de Two-Step Admin e funções de Lock/Slashing no `Nexus`. No `GithubIdentityContract`, integração de um verificador ZK externo opcional durante o `mint` e adição de função pública de renovação de TTL. Refatoração do script bash de deploy.
 
 **Tech Stack:** Rust, Soroban SDK, Bash.
 
@@ -13,12 +13,12 @@
 ### Task 1: Governança em Duas Etapas (Two-Step Admin Transfer)
 
 **Files:**
-- Modify: `packages/stellar/contracts/zolvency-registry/src/lib.rs`
+- Modify: `contracts/zolvency-registry/src/lib.rs`
 
 - [ ] **Step 1: Adicionar novos DataKeys e atualizar inicialização**
 
 ```rust
-// Em packages/stellar/contracts/zolvency-registry/src/lib.rs
+// Em contracts/zolvency-registry/src/lib.rs
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DataKey {
@@ -34,7 +34,7 @@ pub enum DataKey {
 - [ ] **Step 2: Implementar `transfer_admin` e `accept_admin`**
 
 ```rust
-// Dentro do impl ZolvencyRegistry
+// Dentro do impl Nexus
     pub fn transfer_admin(env: Env, admin: Address, new_admin: Address) {
         admin.require_auth();
         let stored_admin: Address = env.storage().persistent().get(&DataKey::Admin).unwrap();
@@ -57,12 +57,12 @@ pub enum DataKey {
 
 - [ ] **Step 3: Verificar compilação**
 
-Run: `cargo check` em `packages/stellar/contracts/zolvency-registry`.
+Run: `cargo check` em `contracts/zolvency-registry`.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add packages/stellar/contracts/zolvency-registry/src/lib.rs
+git add contracts/zolvency-registry/src/lib.rs
 git commit -m "feat(registry): implement two-step admin transfer for safer governance"
 ```
 
@@ -71,12 +71,12 @@ git commit -m "feat(registry): implement two-step admin transfer for safer gover
 ### Task 2: Reputation Lock & Slashing Mechanics
 
 **Files:**
-- Modify: `packages/stellar/contracts/zolvency-registry/src/lib.rs`
+- Modify: `contracts/zolvency-registry/src/lib.rs`
 
 - [ ] **Step 1: Implementar funções de Lock e Slashing**
 
 ```rust
-// Dentro do impl ZolvencyRegistry
+// Dentro do impl Nexus
     pub fn lock_reputation(env: Env, caller: Address, user: Address, unlock_timestamp: u64) {
         // Nota: Em produção, 'caller' seria verificado contra uma lista de protocolos autorizados.
         caller.require_auth(); 
@@ -121,12 +121,12 @@ git commit -m "feat(registry): implement two-step admin transfer for safer gover
 
 - [ ] **Step 3: Verificar compilação**
 
-Run: `cargo check` em `packages/stellar/contracts/zolvency-registry`.
+Run: `cargo check` em `contracts/zolvency-registry`.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add packages/stellar/contracts/zolvency-registry/src/lib.rs
+git add contracts/zolvency-registry/src/lib.rs
 git commit -m "feat(registry): implement reputation lock and slashing mechanics"
 ```
 
@@ -135,13 +135,13 @@ git commit -m "feat(registry): implement reputation lock and slashing mechanics"
 ### Task 3: Gestão de Estado (TTL Renewal)
 
 **Files:**
-- Modify: `packages/stellar/contracts/github-identity/src/lib.rs`
-- Modify: `packages/stellar/contracts/github-identity/src/storage.rs`
+- Modify: `contracts/github-identity/src/lib.rs`
+- Modify: `contracts/github-identity/src/storage.rs`
 
 - [ ] **Step 1: Adicionar função em `storage.rs` para renovar TTL**
 
 ```rust
-// Em packages/stellar/contracts/github-identity/src/storage.rs
+// Em contracts/github-identity/src/storage.rs
 pub fn extend_token_ttl(env: &Env, token_id: u64) -> Result<(), Error> {
     let key = (Symbol::new(env, "TOK"), token_id);
     if !env.storage().persistent().has(&key) {
@@ -155,7 +155,7 @@ pub fn extend_token_ttl(env: &Env, token_id: u64) -> Result<(), Error> {
 - [ ] **Step 2: Expor função pública em `lib.rs`**
 
 ```rust
-// Em packages/stellar/contracts/github-identity/src/lib.rs, dentro de impl GithubIdentityContract
+// Em contracts/github-identity/src/lib.rs, dentro de impl GithubIdentityContract
     pub fn renew_token_ttl(env: Env, token_id: u64) -> Result<(), Error> {
         // Qualquer um pode chamar, sem require_auth, pois estão pagando a taxa da rede
         storage::extend_token_ttl(&env, token_id)
@@ -165,7 +165,7 @@ pub fn extend_token_ttl(env: &Env, token_id: u64) -> Result<(), Error> {
 - [ ] **Step 3: Commit**
 
 ```bash
-git add packages/stellar/contracts/github-identity/src/lib.rs packages/stellar/contracts/github-identity/src/storage.rs
+git add contracts/github-identity/src/lib.rs contracts/github-identity/src/storage.rs
 git commit -m "feat(identity): add public function to renew token TTL state"
 ```
 
@@ -174,13 +174,13 @@ git commit -m "feat(identity): add public function to renew token TTL state"
 ### Task 4: Integração de Verificador ZK Externo (Interface)
 
 **Files:**
-- Modify: `packages/stellar/contracts/github-identity/src/types.rs`
-- Modify: `packages/stellar/contracts/github-identity/src/lib.rs`
+- Modify: `contracts/github-identity/src/types.rs`
+- Modify: `contracts/github-identity/src/lib.rs`
 
 - [ ] **Step 1: Atualizar Config em `types.rs`**
 
 ```rust
-// Em packages/stellar/contracts/github-identity/src/types.rs, adicionar à struct Config
+// Em contracts/github-identity/src/types.rs, adicionar à struct Config
 pub struct Config {
     pub admin: soroban_sdk::Address,
     pub registry: soroban_sdk::Address,
@@ -195,7 +195,7 @@ pub struct Config {
 - [ ] **Step 2: Atualizar `initialize` e adicionar `set_zk_verifier` em `lib.rs`**
 
 ```rust
-// Em packages/stellar/contracts/github-identity/src/lib.rs
+// Em contracts/github-identity/src/lib.rs
     pub fn initialize(
         env: Env,
         admin: Address,
@@ -231,7 +231,7 @@ pub struct Config {
 - [ ] **Step 3: Invocar verificação ZK no `mint`**
 
 ```rust
-// Em packages/stellar/contracts/github-identity/src/lib.rs, na função mint
+// Em contracts/github-identity/src/lib.rs, na função mint
         let config = storage::get_config(&env)?;
         if let Some(verifier) = config.zk_verifier {
             let is_valid: bool = env.invoke_contract(
@@ -248,7 +248,7 @@ pub struct Config {
 - [ ] **Step 4: Commit**
 
 ```bash
-git add packages/stellar/contracts/github-identity/src/
+git add contracts/github-identity/src/
 git commit -m "feat(identity): integrate external ZK verifier hook in mint process"
 ```
 
@@ -267,7 +267,7 @@ git commit -m "feat(identity): integrate external ZK verifier hook in mint proce
 # 1. Deploy Zolvency Registry
 if [ -z "$ZOLVENCY_REGISTRY_ID" ]; then
     echo "📦 Deploying Zolvency Registry..."
-    REGISTRY_WASM="packages/stellar/contracts/zolvency-registry/target/wasm32-unknown-unknown/release/zolvency_registry.wasm"
+    REGISTRY_WASM="contracts/zolvency-registry/target/wasm32-unknown-unknown/release/zolvency_registry.wasm"
     REGISTRY_ID=$($STELLAR_CLI contract deploy --wasm "$REGISTRY_WASM" --source "$DEPLOYER_SECRET" --network testnet)
     echo "✅ Registry deployed: $REGISTRY_ID"
 else
@@ -278,7 +278,7 @@ fi
 # 2. Deploy Github Identity
 if [ -z "$GITHUB_IDENTITY_ID" ]; then
     echo "🆔 Deploying Github Identity..."
-    IDENTITY_WASM="packages/stellar/contracts/github-identity/target/wasm32-unknown-unknown/release/github_identity.wasm"
+    IDENTITY_WASM="contracts/github-identity/target/wasm32-unknown-unknown/release/github_identity.wasm"
     IDENTITY_ID=$($STELLAR_CLI contract deploy --wasm "$IDENTITY_WASM" --source "$DEPLOYER_SECRET" --network testnet)
     echo "✅ Identity deployed: $IDENTITY_ID"
 else

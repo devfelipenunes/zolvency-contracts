@@ -14,7 +14,7 @@
 Create the adapter that interfaces with the LayerZero Endpoint on Stellar.
 
 **Files:**
-- Create/Modify: `packages/stellar/contracts/github-identity/src/layerzero_adapter.rs`
+- Create/Modify: `contracts/github-identity/src/layerzero_adapter.rs`
 
 - [ ] **Step 1: Define LayerZero Endpoint Interface**
 Import the necessary wasm/client for LayerZero Endpoint V2.
@@ -33,7 +33,7 @@ impl MessengerTrait for LayerZeroAdapter {
 
 - [ ] **Step 3: Commit**
 ```bash
-git add packages/stellar/contracts/github-identity/src/layerzero_adapter.rs
+git add contracts/github-identity/src/layerzero_adapter.rs
 git commit -m "feat(stellar): implement LayerZero V2 adapter"
 ```
 
@@ -43,7 +43,7 @@ git commit -m "feat(stellar): implement LayerZero V2 adapter"
 Finalize the Solidity verifier using the LayerZero OApp standard.
 
 **Files:**
-- Modify: `packages/evm/src/ZolvencyVerifierLayerZero.sol`
+- Modify: `verifiers/evm/src/ZolvencyVerifierLayerZero.sol`
 
 - [ ] **Step 1: Inherit from OApp**
 - [ ] **Step 2: Implement _lzReceive**
@@ -62,7 +62,7 @@ function _lzReceive(
 
 - [ ] **Step 3: Commit**
 ```bash
-git add packages/evm/src/ZolvencyVerifierLayerZero.sol
+git add verifiers/evm/src/ZolvencyVerifierLayerZero.sol
 git commit -m "feat(evm): finalize LayerZero OApp verifier"
 ```
 
@@ -75,6 +75,6 @@ Ensure the core contract correctly routes to the LayerZero adapter.
 - [ ] **Step 2: Verify Build**
 - [ ] **Step 3: Commit**
 ```bash
-git add packages/stellar/contracts/github-identity/src/lib.rs
+git add contracts/github-identity/src/lib.rs
 git commit -m "feat(stellar): enable LayerZero dispatch in core contract"
 ```

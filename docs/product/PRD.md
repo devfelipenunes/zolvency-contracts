@@ -20,7 +20,7 @@ Nossa tese é que a confiança verificada via **Zero-Knowledge Proofs (ZKP)** é
 ### 2.1 Web2-to-Web3 Cashflow (Payroll & Invoicing)
 Transformamos recebíveis (Notas Fiscais, Holerites) em tokens de crédito.
 - **Mecânica de Verificação:** Integração com circuitos `zk-email` para validar o cabeçalho DKIM de e-mails corporativos/bancários sem expor dados sensíveis do usuário.
-- **Protocolo de Oráculo:** O nó validador atesta a validade da prova ZK e o `ZolvencyRegistry` emite um score dinâmico.
+- **Protocolo de Oráculo:** O nó validador atesta a validade da prova ZK e o `Nexus` emite um score dinâmico.
 - **KPI de Sucesso:** Volume de Originação de Crédito (VOV) > $500k no primeiro trimestre pós-lançamento.
 
 ### 2.2 RWA Provenance (Asset-Backed SBTs)

@@ -10,7 +10,7 @@ Este documento serve como referência técnica para protocolos de Lending (Stell
 ## 2. Fluxo de Integração (Underwriting)
 
 ### 2.1 Consulta de Score (Underwriting)
-O protocolo deve consultar o `ZolvencyRegistry` para obter a visão agregada do usuário.
+O protocolo deve consultar o `Nexus` para obter a visão agregada do usuário.
 
 **Chamada Soroban:**
 ```rust

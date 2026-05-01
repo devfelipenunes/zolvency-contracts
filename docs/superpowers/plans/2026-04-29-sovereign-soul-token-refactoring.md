@@ -13,7 +13,7 @@
 ### Task 1: Create Types Module
 
 **Files:**
-- Create: `packages/stellar/contracts/zolvency-soul/src/types.rs`
+- Create: `contracts/zolvency-soul/src/types.rs`
 
 - [ ] **Step 1: Create types.rs with the provided content**
 
@@ -56,14 +56,14 @@ pub struct SoulData {
 - [ ] **Step 2: Commit changes**
 
 ```bash
-git add packages/stellar/contracts/zolvency-soul/src/types.rs
+git add contracts/zolvency-soul/src/types.rs
 git commit -m "feat(stellar): create types module for zolvency-soul"
 ```
 
 ### Task 2: Create Storage Module
 
 **Files:**
-- Create: `packages/stellar/contracts/zolvency-soul/src/storage.rs`
+- Create: `contracts/zolvency-soul/src/storage.rs`
 
 - [ ] **Step 1: Create storage.rs with the provided content**
 
@@ -127,14 +127,14 @@ pub fn remove_passkey_mapping(env: &Env, passkey: &BytesN<65>) {
 - [ ] **Step 2: Commit changes**
 
 ```bash
-git add packages/stellar/contracts/zolvency-soul/src/storage.rs
+git add contracts/zolvency-soul/src/storage.rs
 git commit -m "feat(stellar): create storage module for zolvency-soul"
 ```
 
 ### Task 3: Update Main Contract and Verify
 
 **Files:**
-- Modify: `packages/stellar/contracts/zolvency-soul/src/lib.rs`
+- Modify: `contracts/zolvency-soul/src/lib.rs`
 
 - [ ] **Step 1: Update lib.rs to use new modules and clean up old logic**
 
@@ -205,11 +205,11 @@ I'll rewrite the `lib.rs` to match the new storage pattern but keeping the logic
 
 - [ ] **Step 2: Run cargo check to verify basic compilation**
 
-Run: `cargo check` in `packages/stellar/contracts/zolvency-soul/`
+Run: `cargo check` in `contracts/zolvency-soul/`
 
 - [ ] **Step 3: Commit changes**
 
 ```bash
-git add packages/stellar/contracts/zolvency-soul/src/lib.rs
+git add contracts/zolvency-soul/src/lib.rs
 git commit -m "refactor(stellar): update lib.rs to use types and storage modules"
 ```

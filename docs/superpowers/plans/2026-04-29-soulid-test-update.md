@@ -13,7 +13,7 @@
 ### Task 1: Update `github-identity` Tests
 
 **Files:**
-- Modify: `packages/stellar/contracts/github-identity/src/test.rs`
+- Modify: `contracts/github-identity/src/test.rs`
 
 - [ ] **Step 1: Update `MockSoul` contract**
 Update `MockSoul` to use `u32` Soul IDs and provide a `get_soul` method.
@@ -31,7 +31,7 @@ Expected: PASS
 ### Task 2: Update `zolvency-registry` Tests
 
 **Files:**
-- Modify: `packages/stellar/contracts/zolvency-registry/src/test.rs`
+- Modify: `contracts/zolvency-registry/src/test.rs`
 
 - [ ] **Step 1: Update `MockSoul` contract**
 Ensure `MockSoul` matches the one in `github-identity`.

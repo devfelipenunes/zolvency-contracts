@@ -14,11 +14,11 @@
 Deploy the renamed verifier contract to Sepolia.
 
 **Files:**
-- Create: `packages/evm/script/DeployAxelarVerifier.s.sol`
+- Create: `verifiers/evm/script/DeployAxelarVerifier.s.sol`
 
 - [ ] **Step 1: Create the deployment script**
 ```solidity
-// packages/evm/script/DeployAxelarVerifier.s.sol
+// verifiers/evm/script/DeployAxelarVerifier.s.sol
 pragma solidity ^0.8.0;
 import "forge-std/Script.sol";
 import "../src/ZolvencyVerifierAxelar.sol";
@@ -42,7 +42,7 @@ Run: `cd packages/evm && forge script script/DeployAxelarVerifier.s.sol --rpc-ur
 
 - [ ] **Step 3: Commit**
 ```bash
-git add packages/evm/script/DeployAxelarVerifier.s.sol
+git add verifiers/evm/script/DeployAxelarVerifier.s.sol
 git commit -m "test(evm): add axelar verifier deploy script"
 ```
 
@@ -52,7 +52,7 @@ git commit -m "test(evm): add axelar verifier deploy script"
 Activate the Axelar protocol in the modular Identity contract.
 
 **Files:**
-- Create: `packages/stellar/contracts/github-identity/scripts/activate_axelar.sh`
+- Create: `contracts/github-identity/scripts/activate_axelar.sh`
 
 - [ ] **Step 1: Create the activation script**
 This script will call `set_active_protocol` on the Stellar contract.
@@ -62,7 +62,7 @@ This script will call `set_active_protocol` on the Stellar contract.
 
 - [ ] **Step 3: Commit**
 ```bash
-git add packages/stellar/contracts/github-identity/scripts/activate_axelar.sh
+git add contracts/github-identity/scripts/activate_axelar.sh
 git commit -m "test(stellar): add axelar activation script"
 ```
 

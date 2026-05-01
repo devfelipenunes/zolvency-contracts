@@ -13,8 +13,8 @@
 ### Task 1: Definir Estrutura de Metadados
 
 **Files:**
-- Modify: `packages/stellar/contracts/github-identity/src/types.rs`
-- Modify: `packages/stellar/contracts/github-identity/src/interface.rs`
+- Modify: `contracts/github-identity/src/types.rs`
+- Modify: `contracts/github-identity/src/interface.rs`
 
 - [x] **Step 1: Adicionar `TokenMetadata` em `types.rs`**
 
@@ -43,7 +43,7 @@ pub trait ZolvencyTokenTrait {
 - [x] **Step 3: Commit**
 
 ```bash
-git add packages/stellar/contracts/github-identity/src/types.rs packages/stellar/contracts/github-identity/src/interface.rs
+git add contracts/github-identity/src/types.rs contracts/github-identity/src/interface.rs
 git commit -m "contract: add TokenMetadata structure to interface"
 ```
 
@@ -52,7 +52,7 @@ git commit -m "contract: add TokenMetadata structure to interface"
 ### Task 2: Implementar Metadados no GitHub Identity
 
 **Files:**
-- Modify: `packages/stellar/contracts/github-identity/src/lib.rs`
+- Modify: `contracts/github-identity/src/lib.rs`
 
 - [ ] **Step 1: Implementar `get_metadata`**
 
@@ -76,7 +76,7 @@ Expected: Sucesso.
 - [ ] **Step 3: Commit**
 
 ```bash
-git add packages/stellar/contracts/github-identity/src/lib.rs
+git add contracts/github-identity/src/lib.rs
 git commit -m "contract: implement get_metadata in github-identity"
 ```
 

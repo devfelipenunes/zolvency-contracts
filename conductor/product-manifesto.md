@@ -19,7 +19,7 @@ Aqui reside a inovação do produto. Usando **zkTLS (Reclaim Protocol)**, permit
 
 ### A. Reputation-as-a-Service (RaaS)
 A Zolvency pode cobrar de outros dApps para fornecer o "Score de Confiança".
-- **Fluxo:** Um protocolo de Lending quer saber se um usuário é confiável. Ele paga uma taxa em XLM para consultar o `ZolvencyRegistry`.
+- **Fluxo:** Um protocolo de Lending quer saber se um usuário é confiável. Ele paga uma taxa em XLM para consultar o `Nexus`.
 - **Vantagem:** O dApp parceiro reduz seu risco de inadimplência sem precisar implementar verificação complexa.
 
 ### B. Credit-as-a-Service (CaaS)

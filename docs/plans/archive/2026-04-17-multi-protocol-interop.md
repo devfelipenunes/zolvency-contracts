@@ -14,8 +14,8 @@
 Add support for selecting between different interoperability protocols.
 
 **Files:**
-- Modify: `packages/stellar/contracts/github-identity/src/types.rs`
-- Modify: `packages/stellar/contracts/github-identity/src/storage.rs`
+- Modify: `contracts/github-identity/src/types.rs`
+- Modify: `contracts/github-identity/src/storage.rs`
 
 - [ ] **Step 1: Update types.rs with InteropProtocol enum**
 ```rust
@@ -59,7 +59,7 @@ pub fn set_interop_config(env: &Env, config: &InteropConfig) {
 
 - [ ] **Step 4: Commit**
 ```bash
-git add packages/stellar/contracts/github-identity/src/types.rs packages/stellar/contracts/github-identity/src/storage.rs
+git add contracts/github-identity/src/types.rs contracts/github-identity/src/storage.rs
 git commit -m "feat(stellar): add multi-protocol interop types and storage"
 ```
 
@@ -69,7 +69,7 @@ git commit -m "feat(stellar): add multi-protocol interop types and storage"
 Create a common trait that all adapters must implement.
 
 **Files:**
-- Create: `packages/stellar/contracts/github-identity/src/interop.rs`
+- Create: `contracts/github-identity/src/interop.rs`
 
 - [ ] **Step 1: Define the Messenger trait**
 ```rust
@@ -88,7 +88,7 @@ pub trait MessengerTrait {
 
 - [ ] **Step 2: Commit**
 ```bash
-git add packages/stellar/contracts/github-identity/src/interop.rs
+git add contracts/github-identity/src/interop.rs
 git commit -m "feat(stellar): define common messenger trait"
 ```
 
@@ -98,15 +98,15 @@ git commit -m "feat(stellar): define common messenger trait"
 Move the existing Axelar logic into its own dedicated adapter file.
 
 **Files:**
-- Create: `packages/stellar/contracts/github-identity/src/axelar_adapter.rs`
-- Modify: `packages/stellar/contracts/github-identity/src/lib.rs` (to register the module)
+- Create: `contracts/github-identity/src/axelar_adapter.rs`
+- Modify: `contracts/github-identity/src/lib.rs` (to register the module)
 
 - [ ] **Step 1: Implement AxelarAdapter**
 Extract the logic from `lib.rs` that calls `axelar_client.pay_gas` and `axelar_client.call_contract`.
 
 - [ ] **Step 2: Commit**
 ```bash
-git add packages/stellar/contracts/github-identity/src/axelar_adapter.rs
+git add contracts/github-identity/src/axelar_adapter.rs
 git commit -m "refactor(stellar): move axelar logic to adapter"
 ```
 
@@ -116,7 +116,7 @@ git commit -m "refactor(stellar): move axelar logic to adapter"
 Modify `mint` and `update_token` to use the active adapter.
 
 **Files:**
-- Modify: `packages/stellar/contracts/github-identity/src/lib.rs`
+- Modify: `contracts/github-identity/src/lib.rs`
 
 - [ ] **Step 1: Implement dispatch logic**
 ```rust
@@ -144,7 +144,7 @@ pub fn set_active_protocol(env: Env, admin: Address, protocol: InteropProtocol, 
 
 - [ ] **Step 3: Commit**
 ```bash
-git add packages/stellar/contracts/github-identity/src/lib.rs
+git add contracts/github-identity/src/lib.rs
 git commit -m "feat(stellar): implement protocol switching in core identity"
 ```
 
@@ -154,13 +154,13 @@ git commit -m "feat(stellar): implement protocol switching in core identity"
 Deploy separate verifier contracts to compare performance.
 
 **Files:**
-- Create: `packages/evm/src/ZolvencyVerifierAxelar.sol`
-- Create: `packages/evm/src/ZolvencyVerifierLayerZero.sol`
+- Create: `verifiers/evm/src/ZolvencyVerifierAxelar.sol`
+- Create: `verifiers/evm/src/ZolvencyVerifierLayerZero.sol`
 
 - [ ] **Step 1: Implement Axelar Verifier (Current logic)**
 - [ ] **Step 2: Implement LayerZero OApp Verifier**
 - [ ] **Step 3: Commit**
 ```bash
-git add packages/evm/src/ZolvencyVerifier*.sol
+git add verifiers/evm/src/ZolvencyVerifier*.sol
 git commit -m "feat(evm): add dual verifiers for axelar and layerzero"
 ```

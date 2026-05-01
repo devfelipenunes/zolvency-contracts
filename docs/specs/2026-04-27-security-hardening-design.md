@@ -14,7 +14,7 @@ Com o avanço para a v6.0 (Trust Hub) e a manipulação de reputação que refle
 
 ### 3.1 Camada de CI (GitHub Actions)
 Expandir o `.github/workflows/ci.yml` para incluir os seguintes jobs:
-- **EVM Security (Slither):** Analisa contratos Solidity em `packages/evm/src`. Bloqueia o build em caso de vulnerabilidades de impacto "High".
+- **EVM Security (Slither):** Analisa contratos Solidity em `verifiers/evm/src`. Bloqueia o build em caso de vulnerabilidades de impacto "High".
 - **Rust Security (Cargo Audit):** Verifica o `Cargo.lock` contra a base de dados de vulnerabilidades da RustSec.
 - **Static Analysis (Clippy):** Roda o linter avançado do Rust com flags de segurança para detectar padrões perigosos no Soroban.
 

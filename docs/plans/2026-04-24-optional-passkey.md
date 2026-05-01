@@ -13,8 +13,8 @@
 ### Task 1: Atualizar Estruturas de Dados e Interface
 
 **Files:**
-- Modify: `packages/stellar/contracts/github-identity/src/types.rs`
-- Modify: `packages/stellar/contracts/github-identity/src/interface.rs`
+- Modify: `contracts/github-identity/src/types.rs`
+- Modify: `contracts/github-identity/src/interface.rs`
 
 - [ ] **Step 1: Alterar `MintParams` e `GithubData` em `types.rs`**
 
@@ -65,7 +65,7 @@ Expected: Deve falhar em `lib.rs` e `test.rs` devido ao mismatch de tipos, confi
 - [ ] **Step 4: Commit**
 
 ```bash
-git add packages/stellar/contracts/github-identity/src/types.rs packages/stellar/contracts/github-identity/src/interface.rs
+git add contracts/github-identity/src/types.rs contracts/github-identity/src/interface.rs
 git commit -m "contract: make passkey optional in types and interface"
 ```
 
@@ -74,7 +74,7 @@ git commit -m "contract: make passkey optional in types and interface"
 ### Task 2: Implementar Lógica Condicional de Mint
 
 **Files:**
-- Modify: `packages/stellar/contracts/github-identity/src/lib.rs`
+- Modify: `contracts/github-identity/src/lib.rs`
 
 - [ ] **Step 1: Atualizar a implementação de `get_owner_passkey`**
 
@@ -130,7 +130,7 @@ Expected: Deve passar em `lib.rs` (pode ainda falhar em `test.rs`).
 - [ ] **Step 5: Commit**
 
 ```bash
-git add packages/stellar/contracts/github-identity/src/lib.rs
+git add contracts/github-identity/src/lib.rs
 git commit -m "contract: implement conditional passkey validation in mint"
 ```
 
@@ -139,7 +139,7 @@ git commit -m "contract: implement conditional passkey validation in mint"
 ### Task 3: Atualizar Testes Unitários
 
 **Files:**
-- Modify: `packages/stellar/contracts/github-identity/src/test.rs`
+- Modify: `contracts/github-identity/src/test.rs`
 
 - [ ] **Step 1: Atualizar stubs de teste para usar `Some(...)`**
 
@@ -186,7 +186,7 @@ Expected: Todos os testes devem passar.
 - [ ] **Step 4: Commit**
 
 ```bash
-git add packages/stellar/contracts/github-identity/src/test.rs
+git add contracts/github-identity/src/test.rs
 git commit -m "test: update unit tests to support optional passkey"
 ```
 
@@ -195,13 +195,13 @@ git commit -m "test: update unit tests to support optional passkey"
 ### Task 4: Atualizar Integração e Scripts
 
 **Files:**
-- Modify: `packages/stellar/contracts/zolvency-registry/src/test.rs`
+- Modify: `contracts/zolvency-registry/src/test.rs`
 - Modify: `scripts/validate_final.js`
 
 - [ ] **Step 1: Ajustar teste de integração no Registry**
 
 ```rust
-// Em packages/stellar/contracts/zolvency-registry/src/test.rs
+// Em contracts/zolvency-registry/src/test.rs
     // ... dentro do teste
     let params = github_contract::MintParams {
         username: String::from_str(&env, "devfelipenunes"),
@@ -239,6 +239,6 @@ Expected: Testes de integração passando.
 - [ ] **Step 4: Commit Final**
 
 ```bash
-git add packages/stellar/contracts/zolvency-registry/src/test.rs scripts/validate_final.js
+git add contracts/zolvency-registry/src/test.rs scripts/validate_final.js
 git commit -m "refactor: update registry tests and validation script"
 ```

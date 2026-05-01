@@ -18,7 +18,7 @@ Este plano descreve as alterações necessárias para corrigir as vulnerabilidad
 
 ## 2. Contratos Stellar (Otimização e Padronização)
 
-### ZolvencyRegistry (Hub)
+### Nexus (Hub)
 - **Problema:** Risco de DoS por limite de gás na varredura total de tokens.
 - **Mudanças:**
     - Marcar `get_soul_reputation` (sem tokens) como depreciada ou limitar o `count`.
@@ -30,7 +30,7 @@ Este plano descreve as alterações necessárias para corrigir as vulnerabilidad
     - Garantir que o `nonce` usado na exportação cross-chain seja consistente entre o Spoke e o Registry.
 
 ## 3. Verificação e Testes
-- Atualizar scripts de teste em `packages/stellar/contracts/*/src/test.rs`.
+- Atualizar scripts de teste em `contracts/*/src/test.rs`.
 - Criar novos testes de replay para o contrato EVM.
 
 ---

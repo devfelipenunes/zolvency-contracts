@@ -4,14 +4,14 @@
 Refatorar e otimizar os contratos do Zolvency na rede Stellar (`zolvency-registry` e `github-identity`), focando em escalabilidade no armazenamento, gestão consistente de aluguel (TTL/Rent) e padronização de segurança e erros.
 
 ## Key Files & Context
-- `packages/stellar/contracts/zolvency-registry/src/lib.rs`
-- `packages/stellar/contracts/github-identity/src/storage.rs`
-- `packages/stellar/contracts/github-identity/src/lib.rs`
+- `contracts/zolvency-registry/src/lib.rs`
+- `contracts/github-identity/src/storage.rs`
+- `contracts/github-identity/src/lib.rs`
 - Possivelmente outros contratos (ex: `uber-income`) que seguem o mesmo padrão.
 
 ## Implementation Steps
 
-### 1. Escalabilidade do Hub (`ZolvencyRegistry`)
+### 1. Escalabilidade do Hub (`Nexus`)
 *   **Refatorar o Armazenamento de Tokens:** Substituir o uso de `Vec<Address>` no `DataKey::Tokens`. Atualmente, cada novo token registrado exige a leitura e reescrita de toda a lista. Vamos alterar para um sistema de `TokenCount` (contador) mapeado com índices individuais (`DataKey::Token(u32)`), ou manter um array pequeno apenas para leitura rápida, otimizando as chamadas.
 *   **Tratamento de Erros Profissional:** Remover os `panic!("Not admin")` e introduzir um `enum Error` focado em baixo consumo de *gas*.
 *   **Gerenciamento de TTL (Rent):** Adicionar chamadas de `extend_ttl` para as chaves `Admin`, `Signer` e configurações persistentes sempre que forem lidas ou escritas, evitando que o Registry congele por falta de pagamento do aluguel do Soroban.

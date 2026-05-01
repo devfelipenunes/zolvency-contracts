@@ -13,7 +13,7 @@
 O Zolvency foi desenhado sob o princípio da **Separação de Preocupações (Separation of Concerns)**. Diferente de identidades monolíticas, nossa rede é composta por um centro de governança (Hub) e múltiplos emissores de prova (Spokes).
 
 ### 1.1 O Hub: Zolvency Registry
-O `ZolvencyRegistry` é o cérebro do protocolo. Suas responsabilidades são:
+O `Nexus` é o cérebro do protocolo. Suas responsabilidades são:
 - **Indexação Global:** Mapeia quais contratos são emissores legítimos (ex: `GithubIdentity`, `BankIdentity`).
 - **Agregação de Score:** Fornece a função `get_user_reputation` que itera sobre todos os Spokes registrados para compor o perfil do usuário.
 - **Gestão de Estado de Risco:** Mantém as listas de `Locks` e `Blacklist` (Slashing).

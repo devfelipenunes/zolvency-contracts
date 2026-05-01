@@ -13,9 +13,9 @@
 ### Task 1: Setup New Project Structure
 
 **Files:**
-- Create: `packages/stellar/contracts/zolvency-soul/src/types.rs`
-- Create: `packages/stellar/contracts/zolvency-soul/src/storage.rs`
-- Modify: `packages/stellar/contracts/zolvency-soul/src/lib.rs`
+- Create: `contracts/zolvency-soul/src/types.rs`
+- Create: `contracts/zolvency-soul/src/storage.rs`
+- Modify: `contracts/zolvency-soul/src/lib.rs`
 
 - [ ] **Step 1: Create `types.rs` with new structs**
 
@@ -135,7 +135,7 @@ pub struct ZolvencySoulContract;
 - [ ] **Step 4: Commit structure**
 
 ```bash
-git add packages/stellar/contracts/zolvency-soul/src/types.rs packages/stellar/contracts/zolvency-soul/src/storage.rs packages/stellar/contracts/zolvency-soul/src/lib.rs
+git add contracts/zolvency-soul/src/types.rs contracts/zolvency-soul/src/storage.rs contracts/zolvency-soul/src/lib.rs
 git commit -m "refactor: setup modular structure for sovereign soul"
 ```
 
@@ -144,7 +144,7 @@ git commit -m "refactor: setup modular structure for sovereign soul"
 ### Task 2: Implement Initialization and Mint
 
 **Files:**
-- Modify: `packages/stellar/contracts/zolvency-soul/src/lib.rs`
+- Modify: `contracts/zolvency-soul/src/lib.rs`
 
 - [ ] **Step 1: Implement `initialize`**
 
@@ -206,7 +206,7 @@ impl ZolvencySoulContract {
 - [ ] **Step 3: Commit Mint logic**
 
 ```bash
-git add packages/stellar/contracts/zolvency-soul/src/lib.rs
+git add contracts/zolvency-soul/src/lib.rs
 git commit -m "feat: implement sovereign soul minting"
 ```
 
@@ -215,7 +215,7 @@ git commit -m "feat: implement sovereign soul minting"
 ### Task 3: Implement Discovery and Recovery
 
 **Files:**
-- Modify: `packages/stellar/contracts/zolvency-soul/src/lib.rs`
+- Modify: `contracts/zolvency-soul/src/lib.rs`
 
 - [ ] **Step 1: Implement `get_soul_by_passkey`**
 
@@ -276,7 +276,7 @@ git commit -m "feat: implement sovereign soul minting"
 - [ ] **Step 3: Commit Recovery logic**
 
 ```bash
-git add packages/stellar/contracts/zolvency-soul/src/lib.rs
+git add contracts/zolvency-soul/src/lib.rs
 git commit -m "feat: implement sovereign soul recovery"
 ```
 
@@ -285,7 +285,7 @@ git commit -m "feat: implement sovereign soul recovery"
 ### Task 4: Update Tests and Verify
 
 **Files:**
-- Modify: `packages/stellar/contracts/zolvency-soul/src/test.rs`
+- Modify: `contracts/zolvency-soul/src/test.rs`
 
 - [ ] **Step 1: Rewrite tests for the new architecture**
 
@@ -299,6 +299,6 @@ Expected: PASS
 - [ ] **Step 3: Final Commit**
 
 ```bash
-git add packages/stellar/contracts/zolvency-soul/src/test.rs
+git add contracts/zolvency-soul/src/test.rs
 git commit -m "test: verify sovereign soul mint and recovery"
 ```

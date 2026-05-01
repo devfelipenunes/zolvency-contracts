@@ -21,7 +21,7 @@ Como o Soroban e o EVM possuem formatos de dados diferentes, a lógica de codifi
 3. `user` (address): Endereço da carteira do usuário no EVM (20 bytes).
 
 ```rust
-// packages/stellar/contracts/adapters/axelar/src/lib.rs
+// contracts/adapters/axelar/src/lib.rs
 fn encode_evm_payload(env: &Env, external_id: &String, tier: u8, user: &Bytes) -> Bytes {
     let mut payload = Bytes::new(env);
     // 1. externalId (32 bytes)

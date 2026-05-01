@@ -37,7 +37,7 @@
 .PHONY: audit-evm
 audit-evm:
 	@echo "🔍 Running Slither security audit..."
-	slither packages/evm/ --config-file slither.config.json
+	slither verifiers/evm/ --config-file slither.config.json
 ```
 
 - [ ] **Step 3: Commit**
@@ -141,7 +141,7 @@ git commit -m "chore: unify security and linting commands in makefile"
           pip3 install slither-analyzer
           
       - name: Run Slither
-        run: slither packages/evm/ --config-file slither.config.json
+        run: slither verifiers/evm/ --config-file slither.config.json
 ```
 
 - [ ] **Step 2: Commit**
