@@ -14,19 +14,19 @@ $STELLAR_CLI contract build
 
 # 1. Deploy contracts to Stellar Testnet
 echo "🚀 Deploying ZolvencySoul..."
-SOUL_ID=$($STELLAR_CLI contract deploy --wasm target/wasm32v1-none/release/zolvency_soul.wasm --network testnet --source deployer)
+SOUL_ID=$($STELLAR_CLI contract deploy --wasm target/wasm32-unknown-unknown/release/zolvency_soul.wasm --network testnet --source deployer)
 echo "Soul ID: $SOUL_ID"
 
-echo "🚀 Deploying ZolvencyRegistry..."
-REGISTRY_ID=$($STELLAR_CLI contract deploy --wasm target/wasm32v1-none/release/zolvency_registry.wasm --network testnet --source deployer)
-echo "Registry ID: $REGISTRY_ID"
+echo "🚀 Deploying Nexus..."
+REGISTRY_ID=$($STELLAR_CLI contract deploy --wasm target/wasm32-unknown-unknown/release/nexus.wasm --network testnet --source deployer)
+echo "Nexus ID: $REGISTRY_ID"
 
 echo "🚀 Deploying GithubIdentity..."
-GITHUB_ID=$($STELLAR_CLI contract deploy --wasm target/wasm32v1-none/release/github_identity.wasm --network testnet --source deployer)
+GITHUB_ID=$($STELLAR_CLI contract deploy --wasm target/wasm32-unknown-unknown/release/github_identity.wasm --network testnet --source deployer)
 echo "Github ID: $GITHUB_ID"
 
 echo "🚀 Deploying AxelarAdapter..."
-ADAPTER_ID=$($STELLAR_CLI contract deploy --wasm target/wasm32v1-none/release/zolvency_axelar_adapter.wasm --network testnet --source deployer)
+ADAPTER_ID=$($STELLAR_CLI contract deploy --wasm target/wasm32-unknown-unknown/release/zolvency_axelar_adapter.wasm --network testnet --source deployer)
 echo "Adapter ID: $ADAPTER_ID"
 
 # 2. Deploy Verifier to EVM Sepolia
@@ -36,7 +36,7 @@ STELLAR_DEPLOYER=$($STELLAR_CLI keys address deployer)
 
 export STELLAR_IDENTITY_ADDRESS=$REGISTRY_ID
 # Run forge script
-DEPLOY_OUT=$(forge script packages/evm/script/DeployAxelarVerifier.s.sol:DeployAxelarVerifier --rpc-url $SEPOLIA_RPC --broadcast --verify -vvvv)
+DEPLOY_OUT=$(forge script verifiers/evm/script/DeployAxelarVerifier.s.sol:DeployAxelarVerifier --rpc-url $SEPOLIA_RPC --broadcast --verify -vvvv)
 VERIFIER_ADDRESS=$(echo "$DEPLOY_OUT" | grep "ZolvencyVerifierAxelar deployed to:" | awk '{print $NF}')
 echo "Verifier Address: $VERIFIER_ADDRESS"
 
@@ -45,7 +45,7 @@ echo "⚙️ Initializing ZolvencySoul..."
 $STELLAR_CLI contract invoke --id "$SOUL_ID" --source deployer --network testnet -- \
   initialize --admin "$STELLAR_DEPLOYER" --relayer "$STELLAR_DEPLOYER"
 
-echo "⚙️ Initializing ZolvencyRegistry..."
+echo "⚙️ Initializing Nexus..."
 $STELLAR_CLI contract invoke --id "$REGISTRY_ID" --source deployer --network testnet -- \
   initialize --admin "$STELLAR_DEPLOYER" --signer "$STELLAR_DEPLOYER"
 
@@ -91,6 +91,6 @@ $STELLAR_CLI contract invoke --id "$GITHUB_ID" --source deployer --network testn
 
 echo "✅ Cross-chain transaction submitted!"
 echo "View on Axelarscan: https://testnet.axelarscan.io/gmp/search"
-echo "Registry ID: $REGISTRY_ID"
+echo "Nexus ID: $REGISTRY_ID"
 echo "Github ID: $GITHUB_ID"
 echo "Verifier Address: $VERIFIER_ADDRESS"

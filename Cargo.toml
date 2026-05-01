@@ -2,14 +2,16 @@
 resolver = "2"
 
 members = [
-    "packages/stellar/contracts/github-identity",
-    "packages/stellar/contracts/income-bank",
-    "packages/stellar/contracts/binance-kyc",
-    "packages/stellar/contracts/uber-income",
-    "packages/stellar/contracts/zolvency-registry",
-    "packages/stellar/contracts/zolvency-soul",
-    "packages/stellar/contracts/adapters/axelar",
-    "packages/stellar/contracts/adapters/authority-pull",
+    "contracts/github",
+    "contracts/flow",
+    "contracts/stamp",
+    "contracts/gig",
+    "contracts/nexus",
+    "contracts/soul",
+    "contracts/adapters/axelar",
+    "contracts/adapters/authority-pull",
+    "contracts/will",
+    "verifiers/cosmos",
 ]
 
 [profile.release]

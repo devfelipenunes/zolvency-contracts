@@ -53,7 +53,7 @@ O protocolo assume uma identidade raiz (`zolvency-soul`) como pré-requisito par
 
 - O usuário primeiro “loga” e recebe uma Soul (mint via `relayer` autorizado).
 - Spokes que emitem credenciais (ex: `github-identity`, `uber-income`, `income-bank`, `binance-kyc`) validam Soul no `mint` consultando o contrato Soul (ex: `balance(user) > 0`).
-- O `zolvency-registry` agrega reputação consultando entrypoints padronizados dos spokes.
+- O `nexus` agrega reputação consultando entrypoints padronizados dos spokes.
 
 ## 🧪 E2E (Soul-Centric Flow)
 

@@ -1,8 +1,8 @@
 .PHONY: build test fmt lint clean deploy-testnet
 
 # Configurações
-WASM_IDENTITY=packages/stellar/contracts/github-identity/target/wasm32-unknown-unknown/release/github_identity.wasm
-WASM_REGISTRY=packages/stellar/contracts/zolvency-registry/target/wasm32-unknown-unknown/release/zolvency_registry.wasm
+WASM_IDENTITY=contracts/github/target/wasm32-unknown-unknown/release/github_identity.wasm
+WASM_REGISTRY=contracts/nexus/target/wasm32-unknown-unknown/release/nexus.wasm
 
 build:
 	@echo "🔨 Building contracts..."
@@ -31,7 +31,7 @@ audit: audit-rust audit-evm
 .PHONY: audit-evm
 audit-evm:
 	@echo "🔍 Running Slither security audit..."
-	slither packages/evm/ --config-file slither.config.json
+	slither verifiers/evm/ --config-file slither.config.json
 
 .PHONY: audit-rust
 audit-rust:
