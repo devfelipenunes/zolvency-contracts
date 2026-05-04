@@ -12,6 +12,14 @@ pub struct AxelarGasToken {
 }
 
 #[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Ecosystem {
+    Evm,
+    Cosmos,
+    Solana,
+}
+
+#[contracttype]
 pub enum DataKey {
     Gateway,
     GasService,
@@ -66,11 +74,15 @@ impl AxelarAdapter {
         user_evm_address: Bytes,
         nonce: u64,
         token_type: Symbol,
+        ecosystem: Ecosystem,
     ) -> Result<(), Error> {
         let admin: Address = env.storage().instance().get(&DataKey::Admin).ok_or(Error::NotInitialized)?;
         admin.require_auth();
 
-        let payload = Self::encode_reputation_payload(&env, &external_id, tier as u8, &user_evm_address, nonce, token_type);
+        let payload = match ecosystem {
+            Ecosystem::Evm => Self::encode_reputation_payload(&env, &external_id, tier as u8, &user_evm_address, nonce, token_type),
+            _ => Self::encode_reputation_payload_borsh(&env, &external_id, tier, &user_evm_address, nonce, token_type),
+        };
         Self::call_axelar(&env, caller, destination_chain, destination_address, payload)
     }
 
@@ -83,11 +95,15 @@ impl AxelarAdapter {
         soul_id: u32,
         permissions: u64,
         expiry: u64,
+        ecosystem: Ecosystem,
     ) -> Result<(), Error> {
         let admin: Address = env.storage().instance().get(&DataKey::Admin).ok_or(Error::NotInitialized)?;
         admin.require_auth();
 
-        let payload = Self::encode_will_auth_payload(&env, &will_evm_address, soul_id, permissions, expiry);
+        let payload = match ecosystem {
+            Ecosystem::Evm => Self::encode_will_auth_payload(&env, &will_evm_address, soul_id, permissions, expiry),
+            _ => Self::encode_will_auth_payload_borsh(&env, &will_evm_address, soul_id, permissions, expiry),
+        };
         Self::call_axelar(&env, caller, destination_chain, destination_address, payload)
     }
 
@@ -193,6 +209,48 @@ impl AxelarAdapter {
         let mut payload = Bytes::new(env);
         payload.append(&Bytes::from_array(env, &[2u8])); // Type 2: Will Auth
         payload.append(&data);
+        payload
+    }
+
+    fn encode_reputation_payload_borsh(env: &Env, external_id: &String, tier: u32, user: &Bytes, nonce: u64, token_type: Symbol) -> Bytes {
+        let mut payload = Bytes::new(env);
+        payload.append(&Bytes::from_array(env, &[1u8])); // Type 1: Reputation
+        
+        // Borsh: external_id (as hash), tier (u32), user (32 bytes), nonce (u64), token_type (as hash)
+        payload.append(&env.crypto().keccak256(&external_id.clone().to_xdr(env)).into());
+        
+        let t_le = tier.to_le_bytes();
+        payload.append(&Bytes::from_array(env, &t_le));
+
+        let mut user_bytes = [0u8; 32];
+        user.copy_into_slice(&mut user_bytes[12..32]); 
+        payload.append(&Bytes::from_array(env, &user_bytes));
+
+        let n_le = nonce.to_le_bytes();
+        payload.append(&Bytes::from_array(env, &n_le));
+
+        payload.append(&env.crypto().keccak256(&token_type.to_xdr(env)).into());
+        
+        payload
+    }
+
+    fn encode_will_auth_payload_borsh(env: &Env, will: &Bytes, soul_id: u32, permissions: u64, expiry: u64) -> Bytes {
+        let mut payload = Bytes::new(env);
+        payload.append(&Bytes::from_array(env, &[2u8])); // Type 2: Will Auth
+        
+        let mut will_bytes = [0u8; 32];
+        will.copy_into_slice(&mut will_bytes[12..32]);
+        payload.append(&Bytes::from_array(env, &will_bytes));
+
+        let sid_le = soul_id.to_le_bytes();
+        payload.append(&Bytes::from_array(env, &sid_le));
+
+        let p_le = permissions.to_le_bytes();
+        payload.append(&Bytes::from_array(env, &p_le));
+
+        let e_le = expiry.to_le_bytes();
+        payload.append(&Bytes::from_array(env, &e_le));
+
         payload
     }
 }
