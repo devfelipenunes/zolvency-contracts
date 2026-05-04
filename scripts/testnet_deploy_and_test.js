@@ -92,7 +92,7 @@ async function createContract(wasmHash) {
                         salt: crypto.randomBytes(32)
                     })
                 ),
-                executable: new xdr.ContractExecutable("contractExecutableWasm", Buffer.from(wasmHash, 'hex'))
+                executable: xdr.ContractExecutable.contractExecutableWasm(Buffer.from(wasmHash, 'hex'))
             })),
             auth: []
         }))
