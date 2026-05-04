@@ -42,12 +42,30 @@ impl MockAdapter {
     pub fn export_reputation(env: Env, _user: Address, soul_id: u32, _params: CrossChainParams) {
         env.storage().persistent().set(&Symbol::new(&env, "last_reputation"), &soul_id);
     }
-    pub fn send_will_auth(env: Env, _user: Address, _chain: String, _dest: String, _user_dest: Bytes, soul_id: u32, permissions: u64, expiry: u64) {
-        let data = (_user, soul_id, permissions, expiry);
+    pub fn send_will_auth(env: Env, _user: Address, _chain: String, _dest: String, _user_dest: Bytes, soul_id: u32, permissions: u64, expiry: u64, ecosystem: Ecosystem) {
+        let data = (_user, soul_id, permissions, expiry, ecosystem);
         env.storage().persistent().set(&Symbol::new(&env, "last_will"), &data);
     }
-    pub fn get_last_will_auth(env: Env) -> (Address, u32, u64, u64) {
+    pub fn get_last_will_auth(env: Env) -> (Address, u32, u64, u64, Ecosystem) {
         env.storage().persistent().get(&Symbol::new(&env, "last_will")).unwrap()
+    }
+    pub fn send_reputation(
+        env: Env,
+        _caller: Address,
+        _dest_chain: String,
+        _dest_addr: String,
+        _ext_id: String,
+        _tier: u32,
+        _user_dest: Bytes,
+        nonce: u64,
+        _token_type: Symbol,
+        ecosystem: Ecosystem,
+    ) {
+        let data = (nonce, ecosystem);
+        env.storage().persistent().set(&Symbol::new(&env, "last_rep_send"), &data);
+    }
+    pub fn get_last_rep_send(env: Env) -> (u64, Ecosystem) {
+        env.storage().persistent().get(&Symbol::new(&env, "last_rep_send")).unwrap()
     }
 }
 
@@ -139,6 +157,7 @@ fn test_complete_will_lifecycle_interactions() {
         destination_chain: String::from_str(&env, "arbitrum"),
         destination_address: String::from_str(&env, "0xWillSpoke"),
         user_destination_address: Bytes::from_array(&env, &[0u8; 20]),
+        ecosystem: Ecosystem::Evm,
     };
 
     registry_client.export_will_authority(&user_a, &will_x, &cc_params);
@@ -148,7 +167,7 @@ fn test_complete_will_lifecycle_interactions() {
     assert_eq!(fee_token.balance(&treasury), 50);
 
     // Verify Adapter Call
-    let (_got_user, got_soul, got_p, _got_e) = adapter_client.get_last_will_auth();
+    let (_got_user, got_soul, got_p, _got_e, _got_eco) = adapter_client.get_last_will_auth();
     assert_eq!(got_soul, 1);
     assert_eq!(got_p, permissions);
 
@@ -192,6 +211,7 @@ fn test_will_auth_expiry() {
         destination_chain: String::from_str(&env, "eth"),
         destination_address: String::from_str(&env, "0x123"),
         user_destination_address: Bytes::from_array(&env, &[0u8; 20]),
+        ecosystem: Ecosystem::Evm,
     };
 
     // This should succeed
@@ -254,6 +274,7 @@ fn test_security_soul_lock_impact() {
         destination_chain: String::from_str(&env, "base"),
         destination_address: String::from_str(&env, "0xBase"),
         user_destination_address: Bytes::from_array(&env, &[0u8; 20]),
+        ecosystem: Ecosystem::Evm,
     });
 
     let res = registry_client.try_export_reputation(
@@ -323,9 +344,10 @@ fn test_multi_chain_export() {
         destination_chain: String::from_str(&env, "arbitrum"),
         destination_address: String::from_str(&env, "0xWillSpoke"),
         user_destination_address: Bytes::from_array(&env, &[0u8; 20]),
+        ecosystem: Ecosystem::Evm,
     };
     registry_client.export_will_authority(&user, &will, &cc_a);
-    let (_, got_soul, _, _) = adapter_client.get_last_will_auth();
+    let (_, got_soul, _, _, _) = adapter_client.get_last_will_auth();
     assert_eq!(got_soul, 1);
 
     // Export to Chain B
@@ -333,8 +355,9 @@ fn test_multi_chain_export() {
         destination_chain: String::from_str(&env, "polygon"),
         destination_address: String::from_str(&env, "0xPoly"),
         user_destination_address: Bytes::from_array(&env, &[0u8; 20]),
+        ecosystem: Ecosystem::Evm,
     };
     registry_client.export_will_authority(&user, &will, &cc_b);
-    let (_, got_soul_b, _, _) = adapter_client.get_last_will_auth();
+    let (_, got_soul_b, _, _, _) = adapter_client.get_last_will_auth();
     assert_eq!(got_soul_b, 1);
 }

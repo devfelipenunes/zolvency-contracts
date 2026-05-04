@@ -31,6 +31,7 @@ pub struct FeeConfig {
 #[contracttype]
 #[derive(Clone, Debug)]
 pub struct WillAuthorization {
+    pub owner: Address,
     pub soul_id: u32,
     pub permissions: u64,
     pub expiry: u64,
@@ -60,11 +61,20 @@ pub struct InteropConfig {
 }
 
 #[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Ecosystem {
+    Evm,
+    Cosmos,
+    Solana,
+}
+
+#[contracttype]
 #[derive(Clone, Debug)]
 pub struct CrossChainParams {
     pub destination_chain: soroban_sdk::String,
     pub destination_address: soroban_sdk::String,
     pub user_destination_address: soroban_sdk::Bytes,
+    pub ecosystem: Ecosystem,
 }
 
 #[contracterror]
@@ -76,6 +86,7 @@ pub enum Error {
     NotPendingAdmin = 3,
     NotInitialized = 4,
     SoulBlocked = 5,
+    Unauthorized = 6,
 }
 
 #[contracttype]
@@ -356,6 +367,7 @@ impl Nexus {
                             cc.user_destination_address,
                             nonce,
                             token_type,
+                            cc.ecosystem,
                         )
                             .into_val(&env),
                     );
@@ -377,7 +389,8 @@ impl Nexus {
         
         let expiry = env.ledger().timestamp() + duration;
         let auth = WillAuthorization {
-            soul_id: 1, // Mock
+            owner: user.clone(),
+            soul_id: 1, // TODO: Future enhancement - integrate with Soul Token Registry
             permissions,
             expiry,
         };
@@ -417,8 +430,13 @@ impl Nexus {
             return Err(Error::SoulBlocked);
         }
 
+        // Restrict export to the owner or the agent themselves
+        if _caller != auth.owner && _caller != will_address {
+            return Err(Error::Unauthorized);
+        }
+
         if let Some(interop_config) = env.storage().persistent().get::<_, InteropConfig>(&DataKey::InteropConfig) {
-            if interop_config.active_protocol == InteropProtocol::Axelar {
+            if interop_config.active_protocol != InteropProtocol::None {
                 if let Some(fee) = env.storage().persistent().get::<_, FeeConfig>(&DataKey::FeeConfig) {
                     let treasury = env.storage().persistent().get::<_, Address>(&DataKey::Treasury).ok_or(Error::NotInitialized)?;
                     let token_client = soroban_sdk::token::Client::new(&env, &fee.token);
@@ -436,6 +454,7 @@ impl Nexus {
                         auth.soul_id,
                         auth.permissions,
                         auth.expiry,
+                        cross_chain.ecosystem,
                     )
                         .into_val(&env),
                 );
@@ -447,6 +466,16 @@ impl Nexus {
 
     pub fn revoke_will(env: Env, user: Address, will_address: Address) -> Result<(), Error> {
         user.require_auth();
+        
+        let auth: WillAuthorization = env.storage().persistent()
+            .get(&DataKey::WillAuth(will_address.clone()))
+            .ok_or(Error::NotInitialized)?;
+            
+        // SECURITY: Ensure only the owner can revoke the will
+        if auth.owner != user {
+            return Err(Error::Unauthorized);
+        }
+        
         env.storage().persistent().remove(&DataKey::WillAuth(will_address.clone()));
         
         // Burn Will (Sub-SBT) if contract is set
