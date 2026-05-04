@@ -69,6 +69,7 @@ impl AxelarAdapter {
         caller: Address,
         destination_chain: String,
         destination_address: String,
+        soul_id: u32,
         external_id: String,
         tier: u32,
         user_evm_address: Bytes,
@@ -76,13 +77,13 @@ impl AxelarAdapter {
         token_type: Symbol,
         ecosystem: Ecosystem,
     ) -> Result<(), Error> {
-        let admin: Address = env.storage().instance().get(&DataKey::Admin).ok_or(Error::NotInitialized)?;
-        admin.require_auth();
+        caller.require_auth();
 
         let payload = match ecosystem {
             Ecosystem::Evm => Self::encode_reputation_payload(&env, &external_id, tier as u8, &user_evm_address, nonce, token_type),
-            _ => Self::encode_reputation_payload_borsh(&env, &external_id, tier, &user_evm_address, nonce, token_type),
+            _ => Self::encode_reputation_payload_borsh(&env, soul_id, &external_id, tier, &user_evm_address, nonce, token_type),
         };
+        
         Self::call_axelar(&env, caller, destination_chain, destination_address, payload)
     }
 
@@ -97,8 +98,7 @@ impl AxelarAdapter {
         expiry: u64,
         ecosystem: Ecosystem,
     ) -> Result<(), Error> {
-        let admin: Address = env.storage().instance().get(&DataKey::Admin).ok_or(Error::NotInitialized)?;
-        admin.require_auth();
+        caller.require_auth();
 
         let payload = match ecosystem {
             Ecosystem::Evm => Self::encode_will_auth_payload(&env, &will_evm_address, soul_id, permissions, expiry),
@@ -119,22 +119,23 @@ impl AxelarAdapter {
         let gas_token_addr: Address = env.storage().instance().get(&DataKey::GasToken).ok_or(Error::NotInitialized)?;
 
         // Pagamento de Gás
+        let amount = Self::estimate_fee(env.clone(), destination_chain.clone());
         let gas_token = AxelarGasToken {
             address: gas_token_addr,
-            amount: 15_000_000i128,
+            amount,
         };
 
         let _: Val = env.invoke_contract(
             &gas_service,
             &Symbol::new(env, "pay_gas"),
             (
-                env.current_contract_address(),
+                caller,                         // The address that will pay the gas
                 destination_chain.clone(),
                 destination_address.clone(),
                 payload.clone(),
-                caller,
+                env.current_contract_address(), // refund address
                 gas_token,
-                Bytes::new(env),
+                Bytes::new(env),                // params
             )
                 .into_val(env),
         );
@@ -157,6 +158,8 @@ impl AxelarAdapter {
 
     fn encode_reputation_payload(env: &Env, external_id: &String, tier: u8, user: &Bytes, nonce: u64, token_type: Symbol) -> Bytes {
         let mut data = Bytes::new(env);
+        
+        // ABI: (bytes32, uint256, address, uint256, bytes32)
         data.append(&env.crypto().keccak256(&external_id.clone().to_xdr(env)).into());
         
         let mut tier_bytes = [0u8; 32];
@@ -164,6 +167,7 @@ impl AxelarAdapter {
         data.append(&Bytes::from_array(env, &tier_bytes));
 
         let mut user_bytes = [0u8; 32];
+        // Address padding (20 bytes into 32 bytes)
         user.copy_into_slice(&mut user_bytes[12..32]);
         data.append(&Bytes::from_array(env, &user_bytes));
 
@@ -180,27 +184,24 @@ impl AxelarAdapter {
         payload
     }
 
-    fn encode_will_auth_payload(env: &Env, will: &Bytes, soul_id: u32, permissions: u64, expiry: u64) -> Bytes {
+    fn encode_will_auth_payload(env: &Env, will_evm_address: &Bytes, soul_id: u32, permissions: u64, expiry: u64) -> Bytes {
         let mut data = Bytes::new(env);
         
-        // Will Address (32 bytes padded)
+        // ABI: (address, uint32, uint64, uint64)
         let mut will_bytes = [0u8; 32];
-        will.copy_into_slice(&mut will_bytes[12..32]);
+        will_evm_address.copy_into_slice(&mut will_bytes[12..32]);
         data.append(&Bytes::from_array(env, &will_bytes));
 
-        // Soul ID (32 bytes padded)
         let mut sid_bytes = [0u8; 32];
         let sid_be = soul_id.to_be_bytes();
         sid_bytes[28..32].copy_from_slice(&sid_be);
         data.append(&Bytes::from_array(env, &sid_bytes));
 
-        // Permissions (32 bytes padded)
         let mut perm_bytes = [0u8; 32];
         let p_be = permissions.to_be_bytes();
         perm_bytes[24..32].copy_from_slice(&p_be);
         data.append(&Bytes::from_array(env, &perm_bytes));
 
-        // Expiry (32 bytes padded)
         let mut exp_bytes = [0u8; 32];
         let e_be = expiry.to_be_bytes();
         exp_bytes[24..32].copy_from_slice(&e_be);
@@ -212,25 +213,28 @@ impl AxelarAdapter {
         payload
     }
 
-    fn encode_reputation_payload_borsh(env: &Env, external_id: &String, tier: u32, user: &Bytes, nonce: u64, token_type: Symbol) -> Bytes {
+    fn encode_reputation_payload_borsh(env: &Env, soul_id: u32, external_id: &String, tier: u32, user: &Bytes, nonce: u64, token_type: Symbol) -> Bytes {
         let mut payload = Bytes::new(env);
         payload.append(&Bytes::from_array(env, &[1u8])); // Type 1: Reputation
-        
-        // Borsh: external_id (as hash), tier (u32), user (32 bytes), nonce (u64), token_type (as hash)
+
+        let sid_le = soul_id.to_le_bytes();
+        payload.append(&Bytes::from_array(env, &sid_le));
+
         payload.append(&env.crypto().keccak256(&external_id.clone().to_xdr(env)).into());
-        
+
         let t_le = tier.to_le_bytes();
         payload.append(&Bytes::from_array(env, &t_le));
 
         let mut user_bytes = [0u8; 32];
-        user.copy_into_slice(&mut user_bytes[12..32]); 
+        // For Cosmos, we might want 32 bytes or just the length. Borsh uses 32 bytes fixed for our struct.
+        user.copy_into_slice(&mut user_bytes[0..user.len() as usize]);
         payload.append(&Bytes::from_array(env, &user_bytes));
 
         let n_le = nonce.to_le_bytes();
         payload.append(&Bytes::from_array(env, &n_le));
 
         payload.append(&env.crypto().keccak256(&token_type.to_xdr(env)).into());
-        
+
         payload
     }
 
@@ -239,7 +243,7 @@ impl AxelarAdapter {
         payload.append(&Bytes::from_array(env, &[2u8])); // Type 2: Will Auth
         
         let mut will_bytes = [0u8; 32];
-        will.copy_into_slice(&mut will_bytes[12..32]);
+        will.copy_into_slice(&mut will_bytes[0..will.len() as usize]);
         payload.append(&Bytes::from_array(env, &will_bytes));
 
         let sid_le = soul_id.to_le_bytes();

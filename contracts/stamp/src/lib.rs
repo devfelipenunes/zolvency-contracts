@@ -14,7 +14,7 @@ use soroban_sdk::{
 pub use interface::ZolvencyTokenTrait;
 pub use types::{
     CrossChainParams, Error, KycData, KycLevel, MintParams,
-    RenewalWindow, TokenMetadata, UpdateParams,
+    RenewalWindow, TokenMetadata, UpdateParams, Ecosystem,
 };
 
 #[contract]

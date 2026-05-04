@@ -1,5 +1,6 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Binary};
+use crate::state::Reputation;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -21,6 +22,8 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     #[returns(WillResponse)]
     GetWill { soul_id: u32 },
+    #[returns(Reputation)]
+    GetReputation { user_hex: String, token_type_hex: String },
 }
 
 #[cw_serde]

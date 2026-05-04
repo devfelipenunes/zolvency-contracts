@@ -13,7 +13,7 @@ cw-storage-plus = "1.2.0"
 schemars = "0.8.16"
 serde = { version = "1.0.197", default-features = false, features = ["derive"] }
 thiserror = "1.0.58"
-borsh = "1.5.1"
+borsh = { version = "1.5.1", features = ["derive"] }
 hex = "0.4.3"
 
 [dev-dependencies]

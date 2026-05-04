@@ -6,7 +6,6 @@ use soroban_sdk::{
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AgentAuthData {
-    pub permissions: u64,
     pub expiry: u64,
     pub human_owner: Address,
 }
@@ -28,6 +27,23 @@ pub enum Error {
     NonTransferable = 4,
 }
 
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Ecosystem {
+    Evm,
+    Cosmos,
+    Solana,
+}
+
+#[contracttype]
+#[derive(Clone, Debug)]
+pub struct CrossChainParams {
+    pub destination_chain: soroban_sdk::String,
+    pub destination_address: soroban_sdk::String,
+    pub user_destination_address: soroban_sdk::Bytes,
+    pub ecosystem: Ecosystem,
+}
+
 #[contract]
 pub struct ZolvencyAgentSBT;
 
@@ -46,14 +62,12 @@ impl ZolvencyAgentSBT {
         env: Env,
         human_owner: Address,
         agent: Address,
-        permissions: u64,
         expiry: u64,
     ) -> Result<(), Error> {
         let registry: Address = env.storage().instance().get(&DataKey::Registry).ok_or(Error::NotAuthorized)?;
         registry.require_auth();
 
         let data = AgentAuthData {
-            permissions,
             expiry,
             human_owner,
         };

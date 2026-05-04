@@ -86,7 +86,7 @@ async function createContract(wasmHash) {
     const tx = new TransactionBuilder(account, { fee: '1000000', networkPassphrase })
         .addOperation(Operation.invokeHostFunction({
             func: xdr.HostFunction.hostFunctionTypeCreateContract(new xdr.CreateContractArgs({
-                sourceId: xdr.ContractIdPreimage.contractIdPreimageFromAddress(
+                contractIdPreimage: xdr.ContractIdPreimage.contractIdPreimageFromAddress(
                     new xdr.ContractIdPreimageFromAddress({
                         address: Address.fromString(deployerAddress).toScAddress(),
                         salt: crypto.randomBytes(32)
@@ -156,51 +156,69 @@ async function run() {
         const adapterId = await createContract(adapterWasm);
 
         // 2. Initialize
+        console.log('Initializing contracts with addresses:', {
+            deployerAddress,
+            soulId,
+            registryId,
+            githubId,
+            adapterId,
+            gateway: process.env.AXELAR_GATEWAY_STELLAR,
+            gasService: process.env.AXELAR_GAS_SERVICE_STELLAR,
+            gasToken: process.env.AXELAR_GAS_TOKEN_STELLAR,
+            treasury: process.env.TREASURY_ADDRESS
+        });
+
         await invoke(soulId, 'initialize', [
-            nativeToScVal(deployerAddress, { type: 'address' }),
-            nativeToScVal(deployerAddress, { type: 'address' })
+            Address.fromString(deployerAddress).toScVal(),
+            Address.fromString(deployerAddress).toScVal()
         ]);
 
         await invoke(registryId, 'initialize', [
-            nativeToScVal(deployerAddress, { type: 'address' }),
-            nativeToScVal(deployerAddress, { type: 'address' })
+            Address.fromString(deployerAddress).toScVal(),
+            Address.fromString(deployerAddress).toScVal()
         ]);
 
         await invoke(adapterId, 'initialize', [
-            nativeToScVal(deployerAddress, { type: 'address' }),
-            nativeToScVal(soulId, { type: 'address' }),
-            nativeToScVal(process.env.AXELAR_GATEWAY_STELLAR, { type: 'address' }),
-            nativeToScVal(process.env.AXELAR_GAS_SERVICE_STELLAR, { type: 'address' }),
-            nativeToScVal(process.env.AXELAR_GAS_TOKEN_STELLAR, { type: 'address' })
+            Address.fromString(deployerAddress).toScVal(),
+            Address.fromString(soulId).toScVal(),
+            Address.fromString(process.env.AXELAR_GATEWAY_STELLAR).toScVal(),
+            Address.fromString(process.env.AXELAR_GAS_SERVICE_STELLAR).toScVal(),
+            Address.fromString(process.env.AXELAR_GAS_TOKEN_STELLAR).toScVal()
         ]);
 
         // 3. Configure
         await invoke(registryId, 'set_interop_config', [
-            nativeToScVal(deployerAddress, { type: 'address' }),
-            nativeToScVal({
-                active_protocol: 'Axelar',
-                adapter_address: adapterId
-            })
+            Address.fromString(deployerAddress).toScVal(),
+            xdr.ScVal.scvMap([
+                new xdr.ScMapEntry({
+                    key: nativeToScVal('active_protocol'),
+                    val: xdr.ScVal.scvSymbol('Axelar')
+                }),
+                new xdr.ScMapEntry({
+                    key: nativeToScVal('adapter_address'),
+                    val: Address.fromString(adapterId).toScVal()
+                })
+            ])
         ]);
 
         await invoke(githubId, 'initialize', [
-            nativeToScVal(deployerAddress, { type: 'address' }),
-            nativeToScVal(registryId, { type: 'address' }),
-            nativeToScVal(soulId, { type: 'address' }),
-            nativeToScVal(process.env.AXELAR_GAS_TOKEN_STELLAR, { type: 'address' }),
-            nativeToScVal(deployerAddress, { type: 'address' }),
-            nativeToScVal(process.env.TREASURY_ADDRESS, { type: 'address' }),
+            Address.fromString(deployerAddress).toScVal(),
+            Address.fromString(registryId).toScVal(),
+            Address.fromString(soulId).toScVal(),
+            Address.fromString(process.env.AXELAR_GAS_TOKEN_STELLAR).toScVal(),
+            Address.fromString(deployerAddress).toScVal(),
+            Address.fromString(process.env.TREASURY_ADDRESS).toScVal(),
             nativeToScVal(0, { type: 'i128' })
         ]);
 
         await invoke(registryId, 'register_token', [
-            nativeToScVal(deployerAddress, { type: 'address' }),
-            nativeToScVal(githubId, { type: 'address' })
+            Address.fromString(deployerAddress).toScVal(),
+            Address.fromString(githubId).toScVal()
         ]);
 
         // 4. Mint Soul
         await invoke(soulId, 'mint', [
-            nativeToScVal(deployerAddress, { type: 'address' }),
+            Address.fromString(deployerAddress).toScVal(),
             nativeToScVal(Buffer.alloc(64), { type: 'bytes' }),
             nativeToScVal(Buffer.alloc(64), { type: 'bytes' })
         ]);
@@ -211,7 +229,7 @@ async function run() {
         const verifierAddress = "0x71e067692691c3A1c53D4Ab126BbEA76162BFD06"; 
 
         await invoke(githubId, 'mint', [
-            nativeToScVal(deployerAddress, { type: 'address' }),
+            Address.fromString(deployerAddress).toScVal(),
             nativeToScVal(1, { type: 'u32' }),
             nativeToScVal({
                 username: 'testuser',

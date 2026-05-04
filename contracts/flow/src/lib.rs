@@ -13,7 +13,7 @@ use soroban_sdk::{
 
 pub use interface::ZolvencyTokenTrait;
 pub use types::{
-    CrossChainParams, Error, IncomeData, MintParams, RenewalWindow,
+    CrossChainParams, Ecosystem, Error, IncomeData, MintParams, RenewalWindow,
     RevealMode, TokenMetadata, UpdateParams,
 };
 

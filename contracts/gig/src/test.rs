@@ -4,7 +4,7 @@ use soroban_sdk::{
 	Address, Bytes, BytesN, Env, FromVal, IntoVal, String, Symbol,
 };
 use crate::types::{
-	CrossChainParams, IncomePeriod, MintParams, RenewalWindow, RevealMode, UpdateParams,
+	CrossChainParams, IncomePeriod, MintParams, RenewalWindow, RevealMode, UpdateParams, Ecosystem,
 };
 use nexus::{Nexus, NexusClient};
 
@@ -38,11 +38,13 @@ impl MockAdapter {
 		_caller: Address,
 		_dest_chain: String,
 		_dest_addr: String,
+		_soul_id: u32,
 		_ext_id: String,
 		_tier: u32,
 		_user_dest: Bytes,
 		_nonce: u64,
 		_token_type: Symbol,
+		_ecosystem: Ecosystem,
 	) {
 		env.events().publish((Symbol::new(&env, "adapter_send"),), ());
 	}
@@ -216,6 +218,7 @@ fn test_cross_chain_send_event() {
 		destination_chain: String::from_str(&ctx.env, "ethereum"),
 		destination_address: String::from_str(&ctx.env, "0xabc"),
 		user_destination_address: Bytes::from_array(&ctx.env, &[0u8; 20]),
+		ecosystem: Ecosystem::Evm,
 	};
 
 	ctx.client

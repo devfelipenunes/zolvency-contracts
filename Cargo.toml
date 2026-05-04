@@ -11,6 +11,7 @@ members = [
     "contracts/adapters/axelar",
     "contracts/adapters/authority-pull",
     "contracts/will",
+    "contracts/mock_gateway",
     "verifiers/cosmos",
 ]
 

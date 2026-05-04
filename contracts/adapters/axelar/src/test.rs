@@ -2,7 +2,7 @@
 
 use super::*;
 use soroban_sdk::testutils::Events as _;
-use soroban_sdk::{testutils::Address as _, Address, Bytes, Env, String, Symbol, vec, FromVal};
+use soroban_sdk::{testutils::Address as _, Address, Bytes, Env, String, Symbol, FromVal};
 
 #[contract]
 pub struct MockGateway;
@@ -19,7 +19,16 @@ pub struct MockGasService;
 
 #[contractimpl]
 impl MockGasService {
-    pub fn pay_gas(env: Env, _sender: Address, _destination_chain: String, _destination_address: String, _payload: Bytes, _execution_gas_limit: Address, _gas_token: AxelarGasToken, _params: Bytes) {
+    pub fn pay_gas(
+        env: Env,
+        _sender: Address,
+        _destination_chain: String,
+        _destination_address: String,
+        _payload: Bytes,
+        _refund_address: Address,
+        _gas_token: AxelarGasToken,
+        _params: Bytes,
+    ) {
         env.events().publish((Symbol::new(&env, "gas_paid"),), ());
     }
 }
@@ -83,7 +92,8 @@ fn test_send_flow() {
     let nonce = 42u64;
     let token_type = Symbol::new(&env, "bank");
 
-    client.send_reputation(&caller, &dest_chain, &dest_addr, &ext_id, &tier, &user_evm, &nonce, &token_type, &Ecosystem::Evm);
+    let soul_id = 1u32;
+    client.send_reputation(&caller, &dest_chain, &dest_addr, &soul_id, &ext_id, &tier, &user_evm, &nonce, &token_type, &Ecosystem::Evm);
 
     // Verificar eventos do Gateway e Gas
     let events = env.events().all();
@@ -103,5 +113,6 @@ fn test_send_not_initialized() {
     let client = AxelarAdapterClient::new(&env, &adapter_id);
 
     let caller = Address::generate(&env);
-    client.send_reputation(&caller, &String::from_str(&env, "x"), &String::from_str(&env, "y"), &String::from_str(&env, "z"), &1, &Bytes::new(&env), &0, &Symbol::new(&env, "s"), &Ecosystem::Evm);
+    let dummy_user = Bytes::from_array(&env, &[0u8; 20]);
+    client.send_reputation(&caller, &String::from_str(&env, "x"), &String::from_str(&env, "y"), &0, &String::from_str(&env, "z"), &1, &dummy_user, &0, &Symbol::new(&env, "s"), &Ecosystem::Evm);
 }

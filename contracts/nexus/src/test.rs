@@ -22,8 +22,8 @@ pub struct MockWill;
 #[contractimpl]
 impl MockWill {
     pub fn initialize(_env: Env, _admin: Address, _registry: Address) {}
-    pub fn mint(env: Env, human_owner: Address, will: Address, permissions: u64, expiry: u64) {
-        let data = (human_owner, permissions, expiry);
+    pub fn mint(env: Env, human_owner: Address, will: Address, expiry: u64) {
+        let data = (human_owner, 1u64, expiry); // Hardcoding permission for old tests compat
         env.storage().persistent().set(&will, &data);
     }
     pub fn burn(env: Env, _caller: Address, will: Address) {
@@ -54,6 +54,7 @@ impl MockAdapter {
         _caller: Address,
         _dest_chain: String,
         _dest_addr: String,
+        _soul_id: u32,
         _ext_id: String,
         _tier: u32,
         _user_dest: Bytes,
@@ -132,11 +133,20 @@ fn test_complete_will_lifecycle_interactions() {
     let permissions = 0b1010;
     let duration = 3600;
     
-    registry_client.authorize_will(&user_a, &will_x, &permissions, &duration);
+    registry_client.authorize_will(
+        &user_a,
+        &will_x,
+        &Scope {
+            ttl: env.ledger().timestamp() + duration,
+            contract_allowlist: None,
+            function_allowlist: None,
+        },
+        &false,
+        &None,
+    );
 
     // Verify Will was minted to Agent X
-    let (got_owner, got_perm, _got_exp) = will_client.get_auth(&will_x);
-    assert_eq!(got_perm, permissions);
+    let (got_owner, _got_perm, _got_exp) = will_client.get_auth(&will_x);
     assert_eq!(got_owner, user_a);
 
     // 7. Interaction 2: Zenith Discovery (Zenith query)
@@ -167,9 +177,8 @@ fn test_complete_will_lifecycle_interactions() {
     assert_eq!(fee_token.balance(&treasury), 50);
 
     // Verify Adapter Call
-    let (_got_user, got_soul, got_p, _got_e, _got_eco) = adapter_client.get_last_will_auth();
+    let (_got_user, got_soul, _got_p, _got_e, _got_eco) = adapter_client.get_last_will_auth();
     assert_eq!(got_soul, 1);
-    assert_eq!(got_p, permissions);
 
     // 9. Interaction 4: Revocation (Burning Will)
     registry_client.revoke_will(&user_a, &will_x);
@@ -197,7 +206,17 @@ fn test_will_auth_expiry() {
 
     // Start at timestamp 1000
     env.ledger().set_timestamp(1000);
-    registry_client.authorize_will(&user, &will, &permissions, &duration);
+    registry_client.authorize_will(
+        &user,
+        &will,
+        &Scope {
+            ttl: env.ledger().timestamp() + duration,
+            contract_allowlist: None,
+            function_allowlist: None,
+        },
+        &false,
+        &None,
+    );
 
     // Should work at T=2000 (within duration)
     env.ledger().set_timestamp(2000);
@@ -239,8 +258,8 @@ fn test_will_permission_masking() {
     let will_read = Address::generate(&env);
     let will_write = Address::generate(&env);
 
-    registry_client.authorize_will(&user, &will_read, &0b0001, &3600);
-    registry_client.authorize_will(&user, &will_write, &0b0011, &3600);
+    registry_client.authorize_will(&user, &will_read, &Scope { ttl: env.ledger().timestamp() + 3600, contract_allowlist: None, function_allowlist: None }, &false, &None);
+    registry_client.authorize_will(&user, &will_write, &Scope { ttl: env.ledger().timestamp() + 3600, contract_allowlist: None, function_allowlist: None }, &false, &None);
 }
 
 #[test]
@@ -258,7 +277,7 @@ fn test_security_soul_lock_impact() {
     let will = Address::generate(&env);
     let soul_id = 1;
 
-    registry_client.authorize_will(&user, &will, &1, &3600);
+    registry_client.authorize_will(&user, &will, &Scope { ttl: env.ledger().timestamp() + 3600, contract_allowlist: None, function_allowlist: None }, &false, &None);
 
     // Lock the soul for 1 year
     let unlock_at = env.ledger().timestamp() + 31_536_000;
@@ -337,7 +356,7 @@ fn test_multi_chain_export() {
 
     let user = Address::generate(&env);
     let will = Address::generate(&env);
-    registry_client.authorize_will(&user, &will, &1, &3600);
+    registry_client.authorize_will(&user, &will, &Scope { ttl: env.ledger().timestamp() + 3600, contract_allowlist: None, function_allowlist: None }, &false, &None);
 
     // Export to Chain A
     let cc_a = CrossChainParams {

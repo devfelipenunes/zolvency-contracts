@@ -19,22 +19,26 @@ impl MockAdapter {
                 _caller: Address,
                 _destination_chain: String,
                 _destination_address: String,
+                _soul_id: u32,
                 _external_id: String,
                 _tier: u32,
                 _user_evm_address: Bytes,
                 _nonce: u64,
                 _token_type: Symbol,
+                _ecosystem: Ecosystem,
         ) -> Result<(), crate::types::Error> {
                 env.events().publish(
                         (Symbol::new(&env, "adapter_send"),),
                         (
                                 _destination_chain,
                                 _destination_address,
+                                _soul_id,
                                 _external_id,
                                 _tier,
                                 _user_evm_address,
                                 _nonce,
                                 _token_type,
+                                _ecosystem,
                         ),
                 );
                 Ok(())
@@ -228,6 +232,7 @@ fn test_cross_chain_send_event() {
 		destination_chain: String::from_str(&ctx.env, "ethereum"),
 		destination_address: String::from_str(&ctx.env, "0xabc"),
 		user_destination_address: Bytes::from_array(&ctx.env, &[0u8; 20]),
+		ecosystem: Ecosystem::Evm,
 	};
 
 	ctx.client

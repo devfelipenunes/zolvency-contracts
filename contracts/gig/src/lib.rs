@@ -15,7 +15,7 @@ pub use interface::ZolvencyTokenTrait;
 pub use types::{
     CrossChainParams, Error, IncomePeriod, MintParams, RenewalWindow,
     RevealMode, TokenMetadata, UberIncomeData, UpdateParams,
-    InitializeParams,
+    InitializeParams, Ecosystem,
 };
 
 #[contract]

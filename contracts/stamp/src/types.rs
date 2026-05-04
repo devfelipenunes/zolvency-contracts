@@ -30,11 +30,20 @@ pub enum DataKey {
 
 
 #[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Ecosystem {
+    Evm,
+    Cosmos,
+    Solana,
+}
+
+#[contracttype]
 #[derive(Clone, Debug)]
 pub struct CrossChainParams {
     pub destination_chain: String,
     pub destination_address: String,
     pub user_destination_address: Bytes,
+    pub ecosystem: Ecosystem,
 }
 
 #[contracttype]

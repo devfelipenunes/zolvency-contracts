@@ -11,7 +11,7 @@ contract DeployAxelarVerifier is Script {
         string memory stellarSource = vm.envString("STELLAR_IDENTITY_ADDRESS");
 
         vm.startBroadcast(deployerPrivateKey);
-        ZolvencyVerifierAxelar verifier = new ZolvencyVerifierAxelar(gateway, stellarSource);
+        ZolvencyVerifierAxelar verifier = new ZolvencyVerifierAxelar(gateway, "stellar", stellarSource);
         console.log("ZolvencyVerifierAxelar deployed to:", address(verifier));
         vm.stopBroadcast();
     }

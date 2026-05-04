@@ -8,6 +8,9 @@ skip-lint = false
 [programs.localnet]
 zolvency_verifier_solana = "FM344TprtFfP39Q4Td4ZXpamaCLfhDc4Qa61ygpGcou8"
 
+[programs.devnet]
+zolvency_verifier_solana = "FM344TprtFfP39Q4Td4ZXpamaCLfhDc4Qa61ygpGcou8"
+
 [provider]
 cluster = "localnet"
 wallet = "~/.config/solana/id.json"
