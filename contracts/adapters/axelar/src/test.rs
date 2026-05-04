@@ -33,26 +33,26 @@ fn test_encode_evm_payload_format() {
     let nonce = 1u64;
     let token_type = Symbol::new(&env, "github");
 
-    let payload = AxelarAdapter::encode_evm_payload(&env, &external_id, tier, &user, nonce, token_type);
+    let payload = AxelarAdapter::encode_reputation_payload(&env, &external_id, tier, &user, nonce, token_type);
 
     // Verificações de tamanho
-    // 32 (ext_id hash) + 32 (tier) + 32 (user) + 32 (nonce) + 32 (type hash) = 160 bytes
-    assert_eq!(payload.len(), 160);
+    // 1 (type) + 32 (ext_id hash) + 32 (tier) + 32 (user) + 32 (nonce) + 32 (type hash) = 161 bytes
+    assert_eq!(payload.len(), 161);
 
     // Verificar Tier padding (deve terminar em 02)
-    let tier_chunk = payload.slice(32..64);
+    let tier_chunk = payload.slice(33..65);
     let mut expected_tier = [0u8; 32];
     expected_tier[31] = 2;
     assert_eq!(tier_chunk, Bytes::from_array(&env, &expected_tier));
 
     // Verificar User padding (deve ter 12 zeros seguidos de 20 bytes AA)
-    let user_chunk = payload.slice(64..96);
+    let user_chunk = payload.slice(65..97);
     let mut expected_user = [0u8; 32];
     expected_user[12..32].copy_from_slice(&[0xAA; 20]);
     assert_eq!(user_chunk, Bytes::from_array(&env, &expected_user));
 
     // Verificar Nonce padding (deve terminar em 01)
-    let nonce_chunk = payload.slice(96..128);
+    let nonce_chunk = payload.slice(97..129);
     let mut expected_nonce = [0u8; 32];
     expected_nonce[31] = 1;
     assert_eq!(nonce_chunk, Bytes::from_array(&env, &expected_nonce));
@@ -83,7 +83,7 @@ fn test_send_flow() {
     let nonce = 42u64;
     let token_type = Symbol::new(&env, "bank");
 
-    client.send(&caller, &dest_chain, &dest_addr, &ext_id, &tier, &user_evm, &nonce, &token_type);
+    client.send_reputation(&caller, &dest_chain, &dest_addr, &ext_id, &tier, &user_evm, &nonce, &token_type, &Ecosystem::Evm);
 
     // Verificar eventos do Gateway e Gas
     let events = env.events().all();
@@ -103,5 +103,5 @@ fn test_send_not_initialized() {
     let client = AxelarAdapterClient::new(&env, &adapter_id);
 
     let caller = Address::generate(&env);
-    client.send(&caller, &String::from_str(&env, "x"), &String::from_str(&env, "y"), &String::from_str(&env, "z"), &1, &Bytes::new(&env), &0, &Symbol::new(&env, "s"));
+    client.send_reputation(&caller, &String::from_str(&env, "x"), &String::from_str(&env, "y"), &String::from_str(&env, "z"), &1, &Bytes::new(&env), &0, &Symbol::new(&env, "s"), &Ecosystem::Evm);
 }

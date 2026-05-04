@@ -254,3 +254,6 @@ impl AxelarAdapter {
         payload
     }
 }
+
+#[cfg(test)]
+mod test;
