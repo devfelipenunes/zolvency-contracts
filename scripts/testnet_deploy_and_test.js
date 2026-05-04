@@ -86,7 +86,7 @@ async function createContract(wasmHash) {
     const tx = new TransactionBuilder(account, { fee: '1000000', networkPassphrase })
         .addOperation(Operation.invokeHostFunction({
             func: xdr.HostFunction.hostFunctionTypeCreateContract(new xdr.CreateContractArgs({
-                sourceId: new xdr.ContractIdPreimage("contractIdPreimageFromAddress", 
+                sourceId: xdr.ContractIdPreimage.contractIdPreimageFromAddress(
                     new xdr.ContractIdPreimageFromAddress({
                         address: Address.fromString(deployerAddress).toScAddress(),
                         salt: crypto.randomBytes(32)
