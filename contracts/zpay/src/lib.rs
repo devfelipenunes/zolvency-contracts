@@ -1,6 +1,6 @@
 #![no_std]
 
-use soroban_sdk::{contract, contracterror, contractimpl, contracttype, Address, BytesN, Env};
+use soroban_sdk::{contract, contracterror, contractimpl, contracttype, Address, BytesN, Env, Symbol};
 
 pub mod nexus_interface;
 
@@ -14,6 +14,15 @@ pub enum Error {
     InvalidPriceSignature = 4,
     PriceTicketExpired = 5,
     NexusRejected = 6,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PriceTicket {
+    pub base_currency: Symbol,
+    pub price_per_unit: i128, // Scaled by 10^7
+    pub timestamp: u64,
+    pub signature: soroban_sdk::BytesN<64>,
 }
 
 #[contracttype]
@@ -83,6 +92,25 @@ impl ZPayContract {
 
     pub fn is_token_allowed(env: Env, token: Address) -> bool {
         env.storage().persistent().get(&DataKey::AllowedToken(token)).unwrap_or(false)
+    }
+
+    pub fn pay(
+        env: Env,
+        agent: Address,
+        root_anchor: Address,
+        seller: Address,
+        token: Address,
+        base_amount: i128,
+        mandate_id: u64,
+        price_ticket: Option<PriceTicket>,
+    ) -> Result<(), Error> {
+        agent.require_auth();
+        
+        if !Self::is_token_allowed(env.clone(), token.clone()) {
+            return Err(Error::TokenNotAllowed);
+        }
+
+        Ok(())
     }
 }
 
