@@ -8,6 +8,7 @@ members = [
     "contracts/gig",
     "contracts/nexus",
     "contracts/soul",
+    "contracts/zpay",
     "contracts/adapters/axelar",
     "contracts/adapters/authority-pull",
     "contracts/will",
