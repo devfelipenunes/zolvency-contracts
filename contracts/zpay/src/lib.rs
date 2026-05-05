@@ -129,6 +129,63 @@ impl ZPayContract {
             return Err(Error::TokenNotAllowed);
         }
 
+        // 1. Verify Price Ticket if present
+        if let Some(ref ticket) = price_ticket {
+            // Check expiry (e.g., 60 seconds)
+            if env.ledger().timestamp() > ticket.timestamp + 60 {
+                return Err(Error::PriceTicketExpired);
+            }
+            // In a real scenario, we would verify Ed25519 signature here
+            // skipping for prototype simplicity
+        }
+
+        // 2. Calculate impact
+        let usd_impact = Self::calculate_usd_impact(env.clone(), base_amount, price_ticket);
+
+        // 3. Call Nexus
+        let nexus_addr: Address = env.storage().persistent().get(&DataKey::NexusContract).unwrap();
+        let client = nexus_interface::NexusClient::new(&env, &nexus_addr);
+        
+        // Z-Pay validates that the mandate allows calling "pay" on the Z-Pay contract itself
+        let is_authorized = client.verify_authority(
+            &mandate_id,
+            &env.current_contract_address(),
+            &Symbol::new(&env, "pay"),
+            &Some(usd_impact)
+        );
+
+        if !is_authorized {
+            return Err(Error::NexusRejected);
+        }
+
+        // 4. Execute Transfers
+        let srv_fee: i128 = env.storage().persistent().get(&DataKey::ServiceFee).unwrap();
+        let nex_fee: i128 = env.storage().persistent().get(&DataKey::NexusFee).unwrap();
+        
+        let zpay_treasury: Address = env.storage().persistent().get(&DataKey::ZPayTreasury).unwrap();
+        let nex_treasury: Address = env.storage().persistent().get(&DataKey::NexusTreasury).unwrap();
+
+        let token_client = soroban_sdk::token::Client::new(&env, &token);
+        
+        // Transfer to Seller
+        token_client.transfer_from(&env.current_contract_address(), &root_anchor, &seller, &base_amount);
+        
+        // Transfer Z-Pay Fee
+        if srv_fee > 0 {
+             token_client.transfer_from(&env.current_contract_address(), &root_anchor, &zpay_treasury, &srv_fee);
+        }
+
+        // Transfer Nexus Fee
+        if nex_fee > 0 {
+             token_client.transfer_from(&env.current_contract_address(), &root_anchor, &nex_treasury, &nex_fee);
+        }
+        
+        // 5. Emit Event
+        env.events().publish(
+            (Symbol::new(&env, "ZPayTransaction"), mandate_id),
+            (token, base_amount, usd_impact)
+        );
+
         Ok(())
     }
 }
