@@ -94,6 +94,25 @@ impl ZPayContract {
         env.storage().persistent().get(&DataKey::AllowedToken(token)).unwrap_or(false)
     }
 
+    pub fn calculate_usd_impact(
+        env: Env,
+        base_amount: i128,
+        price_ticket: Option<PriceTicket>,
+    ) -> i128 {
+        let srv_fee: i128 = env.storage().persistent().get(&DataKey::ServiceFee).unwrap();
+        let nex_fee: i128 = env.storage().persistent().get(&DataKey::NexusFee).unwrap();
+        let total_tokens = base_amount + srv_fee + nex_fee;
+
+        match price_ticket {
+            None => total_tokens,
+            Some(ticket) => {
+                // To prevent overflow, convert to 256-bit or use standard math if bounds permit
+                // Soroban i128 is large enough for normal token supplies * 10^7
+                (total_tokens * ticket.price_per_unit) / 10_000_000
+            }
+        }
+    }
+
     pub fn pay(
         env: Env,
         agent: Address,
