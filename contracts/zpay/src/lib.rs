@@ -3,6 +3,7 @@
 use soroban_sdk::{contract, contracterror, contractimpl, contracttype, Address, BytesN, Env, Symbol};
 
 pub mod nexus_interface;
+pub mod stork_interface;
 
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
@@ -16,6 +17,7 @@ pub enum Error {
     NexusRejected = 6,
     InvalidCurrency = 7,
     Overflow = 8,
+    MissingOracleData = 9,
 }
 
 #[contracttype]
@@ -33,6 +35,7 @@ pub enum DataKey {
     Admin,
     NexusContract,
     OraclePubKey,
+    StorkOracle,
     ServiceFee,
     NexusFee,
     ZPayTreasury,
@@ -50,6 +53,7 @@ impl ZPayContract {
         admin: Address,
         nexus_contract: Address,
         oracle_pub_key: BytesN<32>,
+        stork_oracle: Address,
         service_fee: i128,
         nexus_fee: i128,
         zpay_treasury: Address,
@@ -61,6 +65,7 @@ impl ZPayContract {
         env.storage().persistent().set(&DataKey::Admin, &admin);
         env.storage().persistent().set(&DataKey::NexusContract, &nexus_contract);
         env.storage().persistent().set(&DataKey::OraclePubKey, &oracle_pub_key);
+        env.storage().persistent().set(&DataKey::StorkOracle, &stork_oracle);
         env.storage().persistent().set(&DataKey::ServiceFee, &service_fee);
         env.storage().persistent().set(&DataKey::NexusFee, &nexus_fee);
         env.storage().persistent().set(&DataKey::ZPayTreasury, &zpay_treasury);
@@ -100,6 +105,7 @@ impl ZPayContract {
         env: Env,
         base_amount: i128,
         price_ticket: Option<PriceTicket>,
+        oracle_feed_id: Option<BytesN<32>>,
     ) -> Result<i128, Error> {
         let srv_fee: i128 = env.storage().persistent().get(&DataKey::ServiceFee).unwrap();
         let nex_fee: i128 = env.storage().persistent().get(&DataKey::NexusFee).unwrap();
@@ -108,18 +114,23 @@ impl ZPayContract {
             .checked_add(srv_fee).ok_or(Error::Overflow)?
             .checked_add(nex_fee).ok_or(Error::Overflow)?;
 
-        match price_ticket {
-            None => Ok(total_tokens),
-            Some(ticket) => {
-                if ticket.base_currency != Symbol::new(&env, "USD") {
-                    return Err(Error::InvalidCurrency);
-                }
-
-                total_tokens
-                    .checked_mul(ticket.price_per_unit).ok_or(Error::Overflow)?
-                    .checked_div(10_000_000).ok_or(Error::Overflow)
+        let price_per_unit = if let Some(feed_id) = oracle_feed_id {
+            let stork_addr: Address = env.storage().persistent().get(&DataKey::StorkOracle).unwrap();
+            let stork_client = stork_interface::StorkClient::new(&env, &stork_addr);
+            let stork_val = stork_client.get_temporal_numeric_value_v1(&feed_id);
+            stork_val.quantized_value
+        } else if let Some(ticket) = price_ticket {
+            if ticket.base_currency != Symbol::new(&env, "USD") {
+                return Err(Error::InvalidCurrency);
             }
-        }
+            ticket.price_per_unit
+        } else {
+            return Err(Error::MissingOracleData);
+        };
+
+        total_tokens
+            .checked_mul(price_per_unit).ok_or(Error::Overflow)?
+            .checked_div(10_000_000).ok_or(Error::Overflow)
     }
 
     pub fn pay(
@@ -131,6 +142,7 @@ impl ZPayContract {
         base_amount: i128,
         mandate_id: u64,
         price_ticket: Option<PriceTicket>,
+        oracle_feed_id: Option<BytesN<32>>,
     ) -> Result<(), Error> {
         agent.require_auth();
         
@@ -149,7 +161,7 @@ impl ZPayContract {
         }
 
         // 2. Calculate impact
-        let usd_impact = Self::calculate_usd_impact(env.clone(), base_amount, price_ticket)?;
+        let usd_impact = Self::calculate_usd_impact(env.clone(), base_amount, price_ticket, oracle_feed_id.clone())?;
 
         // 3. Call Nexus
         let nexus_addr: Address = env.storage().persistent().get(&DataKey::NexusContract).unwrap();
@@ -190,9 +202,15 @@ impl ZPayContract {
         }
         
         // 5. Emit Event
+        let oracle_src = if oracle_feed_id.is_some() {
+            Symbol::new(&env, "stork")
+        } else {
+            Symbol::new(&env, "ticket")
+        };
+
         env.events().publish(
             (Symbol::new(&env, "ZPayTransaction"), mandate_id),
-            (token, base_amount, usd_impact)
+            (token, base_amount, usd_impact, oracle_src)
         );
 
         Ok(())
