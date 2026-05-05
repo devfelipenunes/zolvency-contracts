@@ -9,5 +9,5 @@ pub trait NexusTrait {
         contract: Address,
         function: Symbol,
         transfer_amount: Option<i128>,
-    ) -> bool;
+    ) -> Result<bool, soroban_sdk::Error>;
 }

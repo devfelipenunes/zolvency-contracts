@@ -14,6 +14,8 @@ pub enum Error {
     InvalidPriceSignature = 4,
     PriceTicketExpired = 5,
     NexusRejected = 6,
+    InvalidCurrency = 7,
+    Overflow = 8,
 }
 
 #[contracttype]
@@ -98,17 +100,24 @@ impl ZPayContract {
         env: Env,
         base_amount: i128,
         price_ticket: Option<PriceTicket>,
-    ) -> i128 {
+    ) -> Result<i128, Error> {
         let srv_fee: i128 = env.storage().persistent().get(&DataKey::ServiceFee).unwrap();
         let nex_fee: i128 = env.storage().persistent().get(&DataKey::NexusFee).unwrap();
-        let total_tokens = base_amount + srv_fee + nex_fee;
+        
+        let total_tokens = base_amount
+            .checked_add(srv_fee).ok_or(Error::Overflow)?
+            .checked_add(nex_fee).ok_or(Error::Overflow)?;
 
         match price_ticket {
-            None => total_tokens,
+            None => Ok(total_tokens),
             Some(ticket) => {
-                // To prevent overflow, convert to 256-bit or use standard math if bounds permit
-                // Soroban i128 is large enough for normal token supplies * 10^7
-                (total_tokens * ticket.price_per_unit) / 10_000_000
+                if ticket.base_currency != Symbol::new(&env, "USD") {
+                    return Err(Error::InvalidCurrency);
+                }
+
+                total_tokens
+                    .checked_mul(ticket.price_per_unit).ok_or(Error::Overflow)?
+                    .checked_div(10_000_000).ok_or(Error::Overflow)
             }
         }
     }
@@ -140,19 +149,19 @@ impl ZPayContract {
         }
 
         // 2. Calculate impact
-        let usd_impact = Self::calculate_usd_impact(env.clone(), base_amount, price_ticket);
+        let usd_impact = Self::calculate_usd_impact(env.clone(), base_amount, price_ticket)?;
 
         // 3. Call Nexus
         let nexus_addr: Address = env.storage().persistent().get(&DataKey::NexusContract).unwrap();
         let client = nexus_interface::NexusClient::new(&env, &nexus_addr);
         
         // Z-Pay validates that the mandate allows calling "pay" on the Z-Pay contract itself
-        let is_authorized = client.verify_authority(
+        let is_authorized = client.try_verify_authority(
             &mandate_id,
             &env.current_contract_address(),
             &Symbol::new(&env, "pay"),
             &Some(usd_impact)
-        );
+        ).unwrap_or(Ok(false)).unwrap_or(false);
 
         if !is_authorized {
             return Err(Error::NexusRejected);

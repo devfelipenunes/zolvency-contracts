@@ -86,6 +86,61 @@ fn test_estimate_total_usd() {
     assert_eq!(total_usd, 1_001_500_000);
 }
 
+#[test]
+#[should_panic(expected = "HostError: Error(Contract, #7)")]
+fn test_invalid_currency() {
+    let env = Env::default();
+    let contract_id = env.register(ZPayContract, ());
+    let client = ZPayContractClient::new(&env, &contract_id);
+    
+    client.initialize(
+        &Address::generate(&env),
+        &Address::generate(&env),
+        &soroban_sdk::BytesN::from_array(&env, &[0; 32]),
+        &0,
+        &0,
+        &Address::generate(&env),
+        &Address::generate(&env)
+    );
+
+    let ticket = super::PriceTicket {
+        base_currency: soroban_sdk::Symbol::new(&env, "EUR"),
+        price_per_unit: 1_000_000,
+        timestamp: env.ledger().timestamp(),
+        signature: soroban_sdk::BytesN::from_array(&env, &[0; 64]),
+    };
+    
+    client.calculate_usd_impact(&100_000_000, &Some(ticket));
+}
+
+#[test]
+#[should_panic(expected = "HostError: Error(Contract, #8)")]
+fn test_overflow() {
+    let env = Env::default();
+    let contract_id = env.register(ZPayContract, ());
+    let client = ZPayContractClient::new(&env, &contract_id);
+    
+    client.initialize(
+        &Address::generate(&env),
+        &Address::generate(&env),
+        &soroban_sdk::BytesN::from_array(&env, &[0; 32]),
+        &0,
+        &0,
+        &Address::generate(&env),
+        &Address::generate(&env)
+    );
+
+    // Use a very large amount to trigger overflow in checked_mul
+    let ticket = super::PriceTicket {
+        base_currency: soroban_sdk::Symbol::new(&env, "USD"),
+        price_per_unit: i128::MAX,
+        timestamp: env.ledger().timestamp(),
+        signature: soroban_sdk::BytesN::from_array(&env, &[0; 64]),
+    };
+    
+    client.calculate_usd_impact(&i128::MAX, &Some(ticket));
+}
+
 #[contract]
 pub struct MockNexus;
 
@@ -97,8 +152,8 @@ impl MockNexus {
         _contract: Address,
         _function: Symbol,
         _transfer_amount: Option<i128>,
-    ) -> bool {
-        true
+    ) -> Result<bool, soroban_sdk::Error> {
+        Ok(true)
     }
 }
 
