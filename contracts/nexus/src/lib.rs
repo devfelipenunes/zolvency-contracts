@@ -10,15 +10,22 @@ pub enum DataKey {
     Admin,
     PendingAdmin,
     Signer,
-    TokenCount,        // Contador de tokens registrados
-    TokenId(u32),      // Mapeamento de ID -> Endereço do Contrato
-    TokenExists(Address), // Mapeamento de Endereço -> ID (para evitar duplicatas rápidas)
+    TokenCount,
+    TokenId(u32),
+    TokenExists(Address),
     AxelarConfig,
     InteropConfig,
-    WillAuth(Address), // Mapeamento de Will (EVM/Outro) -> Autorização
-    FeeConfig,          // Configuração de taxas (x402)
-    Treasury,           // Endereço do Tesouro
-    WillContract,       // Endereço do contrato Sub-SBT (Will)
+    FeeConfig,
+    Treasury,
+    WillContract,
+    Mandate(u64),
+    MandateState(u64),
+    MandateChildren(u64), // Map mandate_id to Vec<u64> of children ids
+    GlobalEpoch(Address),
+    VerificationCacheKey(u64, u64), // mandate_id, epoch
+    ConsumedNonce(Address, u64, soroban_sdk::BytesN<32>), // root_anchor, epoch, nonce
+    NextMandateId,
+    AgentMandate(Address), // Mapping agent address to its primary mandate_id for quick lookup
 }
 
 #[contracttype]
@@ -32,19 +39,66 @@ pub struct FeeConfig {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Scope {
     pub ttl: u64,
+    pub transfer_limit: Option<i128>,
+    pub scope_commitment: Option<soroban_sdk::BytesN<32>>,
     pub contract_allowlist: Option<Vec<Address>>,
     pub function_allowlist: Option<soroban_sdk::Vec<soroban_sdk::String>>,
 }
 
 #[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ScopeTag {
+    TransferLimit,
+    ContractAllowlist,
+    FunctionAllowlist,
+    ScopeCommitment,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DelegationRules {
+    pub max_subdepth: u32,
+    pub allowed_scope_tags: Option<Vec<ScopeTag>>,
+    pub budget_fraction: Option<u32>,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum DelegationPolicy {
+    None,
+    Full,
+    Restricted(DelegationRules),
+}
+
+// Replace existing `Mandate`
+#[contracttype]
 #[derive(Clone, Debug)]
 pub struct Mandate {
-    pub owner: Address,
-    pub soul_id: u32,
+    pub id: u64,
+    pub root_anchor: Address,
+    pub issuer: Address,
     pub agent: Address,
     pub scope: Scope,
-    pub can_delegate: bool,
-    pub parent_agent: Option<Address>,
+    pub issued_at_epoch: u64,
+    pub delegation_policy: DelegationPolicy,
+    pub parent_mandate_id: Option<u64>,
+    pub depth: u32,
+}
+#[contracttype]
+#[derive(Clone, Debug)]
+pub struct MandateState {
+    pub mandate_id: u64,
+    pub spent_budget: i128,
+    pub is_revoked: bool,
+}
+
+#[contracttype]
+#[derive(Clone, Debug)]
+pub struct VerificationCache {
+    pub mandate_id: u64,
+    pub epoch_at_cache: u64,
+    pub is_valid: bool,
+    pub cached_at_ledger: u32,
 }
 
 #[contracttype]
@@ -104,6 +158,19 @@ pub enum Error {
     NotInitialized = 4,
     SoulBlocked = 5,
     Unauthorized = 6,
+    MandateNotFound = 7,
+    MandateRevoked = 8,
+    MandateExpired = 9,
+    EpochMismatch = 10,
+    BudgetExceeded = 11,
+    ContractNotAllowed = 12,
+    FunctionNotAllowed = 13,
+    DepthExceeded = 14,
+    DelegationNotAllowed = 15,
+    ScopeViolation = 16,
+    BudgetFractionViolated = 17,
+    NonceAlreadyConsumed = 18,
+    InvalidSep45Signature = 19,
 }
 
 #[contracttype]
@@ -146,7 +213,7 @@ impl Nexus {
             return Err(Error::NotAdmin);
         }
 
-        // Evita duplicatas usando o mapping TokenExists
+
         if env.storage().persistent().has(&DataKey::TokenExists(token_contract.clone())) {
             return Ok(());
         }
@@ -307,7 +374,32 @@ impl Nexus {
         )
     }
 
-    // ── Cross-Chain Logic (Centralized) ──
+    pub fn get_epoch(env: Env, root_anchor: Address) -> u64 {
+        let key = DataKey::GlobalEpoch(root_anchor.clone());
+        let epoch = env.storage().persistent().get(&key).unwrap_or(0);
+        if epoch > 0 {
+            Self::extend_persistent(&env, &key);
+        }
+        epoch
+    }
+
+    pub fn increment_epoch(env: Env, root_anchor: Address) -> Result<u64, Error> {
+        root_anchor.require_auth();
+        
+        let current_epoch: u64 = Self::get_epoch(env.clone(), root_anchor.clone());
+        let new_epoch = current_epoch + 1;
+        
+        let key = DataKey::GlobalEpoch(root_anchor.clone());
+        env.storage().persistent().set(&key, &new_epoch);
+        Self::extend_persistent(&env, &key);
+        
+        env.events().publish(
+            (Symbol::new(&env, "anchor"), Symbol::new(&env, "epoch_inc"), root_anchor),
+            new_epoch,
+        );
+        
+        Ok(new_epoch)
+    }
 
     pub fn set_interop_config(env: Env, admin: Address, config: InteropConfig) -> Result<(), Error> {
         admin.require_auth();
@@ -335,34 +427,34 @@ impl Nexus {
     ) -> Result<(), Error> {
         token_address.require_auth();
 
-        // 🛡️ Segurança: Impedir exportação se a alma estiver bloqueada ou na blacklist
+
         if Self::is_soul_blacklisted(env.clone(), soul_id) || Self::is_soul_locked(env.clone(), soul_id) {
             return Err(Error::SoulBlocked);
         }
 
-        // Apenas tokens registrados podem exportar reputação
+
         if !env.storage().persistent().has(&DataKey::TokenExists(token_address.clone())) {
             return Err(Error::NotAdmin); 
         }
 
-        // ── x402 Fee Collection ──
+
         if let Some(fee) = env.storage().persistent().get::<_, FeeConfig>(&DataKey::FeeConfig) {
             let treasury = env.storage().persistent().get::<_, Address>(&DataKey::Treasury).ok_or(Error::NotInitialized)?;
             let token_client = soroban_sdk::token::Client::new(&env, &fee.token);
             token_client.transfer(&_caller, &treasury, &fee.amount);
         }
 
-        // Exporta para o adaptador configurado
+
         if let Some(cc) = cross_chain {
             if let Some(interop_config) = env.storage().persistent().get::<_, InteropConfig>(&DataKey::InteropConfig) {
                 if interop_config.active_protocol != InteropProtocol::None {
-                    // Publica um evento interno de exportação
+
                     env.events().publish(
                         (Symbol::new(&env, "reputation_exported"), soul_id),
                         (token_address.clone(), external_id.clone(), tier, nonce),
                     );
 
-                    // Tenta buscar o token_type
+
                     let token_type: Symbol = match env.try_invoke_contract::<Symbol, soroban_sdk::Error>(
                         &token_address,
                         &Symbol::new(&env, "get_token_type"),
@@ -379,7 +471,7 @@ impl Nexus {
                             _caller,
                             cc.destination_chain,
                             cc.destination_address,
-                            soul_id, // Add this
+                            soul_id,
                             external_id,
                             tier,
                             cc.user_destination_address,
@@ -397,177 +489,35 @@ impl Nexus {
     }
 
     pub fn authorize_will(
-        env: Env,
-        user: Address,
-        will_address: Address,
-        scope: Scope,
-        can_delegate: bool,
-        parent_agent: Option<Address>,
+        _env: Env,
+        _user: Address,
+        _will_address: Address,
+        _scope: Scope,
+        _can_delegate: bool,
+        _parent_agent: Option<Address>,
     ) -> Result<(), Error> {
-        user.require_auth();
-        
-        // Handle hierarchical checks
-        let owner = if let Some(parent) = parent_agent.clone() {
-            let parent_auth: Mandate = env.storage().persistent()
-                .get(&DataKey::WillAuth(parent.clone()))
-                .ok_or(Error::Unauthorized)?;
-            
-            if !parent_auth.can_delegate {
-                return Err(Error::Unauthorized);
-            }
-            if parent_auth.agent != user {
-                return Err(Error::Unauthorized);
-            }
-            if scope.ttl > parent_auth.scope.ttl {
-                return Err(Error::Unauthorized);
-            }
-            parent_auth.owner
-        } else {
-            user.clone()
-        };
-
-        let auth = Mandate {
-            owner: owner.clone(),
-            soul_id: 1, // TODO: Integrate with Soul Token Registry dynamically
-            agent: will_address.clone(),
-            scope: scope.clone(),
-            can_delegate,
-            parent_agent,
-        };
-
-        env.storage().persistent().set(&DataKey::WillAuth(will_address.clone()), &auth);
-        
-        if let Some(will_contract) = env.storage().persistent().get::<_, Address>(&DataKey::WillContract) {
-            let _: soroban_sdk::Val = env.invoke_contract(
-                &will_contract,
-                &Symbol::new(&env, "mint"),
-                (owner.clone(), will_address.clone(), scope.ttl).into_val(&env), // adjusted args for sub-SBT
-            );
-        }
-
-        env.events().publish(
-            (Symbol::new(&env, "mandate_issued"), owner),
-            (will_address, scope.ttl),
-        );
-
-        Ok(())
+        Err(Error::Unauthorized)
     }
 
     pub fn verify_authority(
-        env: Env,
-        agent: Address,
-        action_context: ActionContext,
+        _env: Env,
+        _agent: Address,
+        _action_context: ActionContext,
     ) -> bool {
-        let auth_opt: Option<Mandate> = env.storage().persistent().get(&DataKey::WillAuth(agent.clone()));
-        if auth_opt.is_none() {
-            return false;
-        }
-        let auth = auth_opt.unwrap();
-
-        if env.ledger().timestamp() > auth.scope.ttl {
-            return false;
-        }
-
-        if let Some(contracts) = auth.scope.contract_allowlist {
-            if !contracts.contains(&action_context.target_contract) {
-                return false;
-            }
-        }
-
-        if let Some(functions) = auth.scope.function_allowlist {
-            if !functions.contains(&action_context.function_name) {
-                return false;
-            }
-        }
-
-        // Recursive check for parent
-        if let Some(parent) = auth.parent_agent {
-            return Self::verify_authority(env, parent, action_context);
-        }
-
-        true
+        false
     }
 
     pub fn export_will_authority(
-        env: Env,
+        _env: Env,
         _caller: Address,
-        will_address: Address,
-        cross_chain: CrossChainParams,
+        _will_address: Address,
+        _cross_chain: CrossChainParams,
     ) -> Result<(), Error> {
-        _caller.require_auth();
-
-        let auth: Mandate = env.storage().persistent()
-            .get(&DataKey::WillAuth(will_address.clone()))
-            .ok_or(Error::NotInitialized)?;
-
-        if env.ledger().timestamp() > auth.scope.ttl {
-            return Err(Error::SoulBlocked);
-        }
-
-        if _caller != auth.owner && _caller != will_address {
-            return Err(Error::Unauthorized);
-        }
-
-        if let Some(interop_config) = env.storage().persistent().get::<_, InteropConfig>(&DataKey::InteropConfig) {
-            if interop_config.active_protocol != InteropProtocol::None {
-                if let Some(fee) = env.storage().persistent().get::<_, FeeConfig>(&DataKey::FeeConfig) {
-                    let treasury = env.storage().persistent().get::<_, Address>(&DataKey::Treasury).ok_or(Error::NotInitialized)?;
-                    let token_client = soroban_sdk::token::Client::new(&env, &fee.token);
-                    token_client.transfer(&_caller, &treasury, &fee.amount);
-                }
-
-                // Since EVM still expects "permissions" as an int in the payload, 
-                // we send a default or mapped mask until the EVM adapter supports full Scope.
-                let mock_permissions: u64 = 1; 
-
-                env.invoke_contract::<()>(
-                    &interop_config.adapter_address,
-                    &Symbol::new(&env, "send_will_auth"),
-                    (
-                        _caller,
-                        cross_chain.destination_chain,
-                        cross_chain.destination_address,
-                        cross_chain.user_destination_address,
-                        auth.soul_id,
-                        mock_permissions,
-                        auth.scope.ttl,
-                        cross_chain.ecosystem,
-                    )
-                        .into_val(&env),
-                );
-            }
-        }
-
-        Ok(())
+        Err(Error::Unauthorized)
     }
 
-    pub fn revoke_will(env: Env, user: Address, will_address: Address) -> Result<(), Error> {
-        user.require_auth();
-        
-        let auth: Mandate = env.storage().persistent()
-            .get(&DataKey::WillAuth(will_address.clone()))
-            .ok_or(Error::NotInitialized)?;
-            
-        // SECURITY: Ensure owner or parent can revoke
-        if auth.owner != user && auth.parent_agent != Some(user.clone()) && auth.agent != user {
-            return Err(Error::Unauthorized);
-        }
-        
-        env.storage().persistent().remove(&DataKey::WillAuth(will_address.clone()));
-        
-        if let Some(will_contract) = env.storage().persistent().get::<_, Address>(&DataKey::WillContract) {
-            let _: soroban_sdk::Val = env.invoke_contract(
-                &will_contract,
-                &Symbol::new(&env, "burn"),
-                (env.current_contract_address(), will_address.clone()).into_val(&env),
-            );
-        }
-
-        env.events().publish(
-            (Symbol::new(&env, "mandate_revoked"), user),
-            (will_address,),
-        );
-        Ok(())
+    pub fn revoke_will(_env: Env, _user: Address, _will_address: Address) -> Result<(), Error> {
+        Err(Error::Unauthorized)
     }
 
     pub fn set_will_contract(env: Env, admin: Address, will_contract: Address) -> Result<(), Error> {
