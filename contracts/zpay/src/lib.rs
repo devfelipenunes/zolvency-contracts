@@ -60,6 +60,30 @@ impl ZPayContract {
     pub fn get_admin(env: Env) -> Address {
         env.storage().persistent().get(&DataKey::Admin).unwrap()
     }
+
+    pub fn add_token(env: Env, admin: Address, token: Address) -> Result<(), Error> {
+        admin.require_auth();
+        let stored_admin: Address = env.storage().persistent().get(&DataKey::Admin).unwrap();
+        if admin != stored_admin {
+            return Err(Error::NotAuthorized);
+        }
+        env.storage().persistent().set(&DataKey::AllowedToken(token), &true);
+        Ok(())
+    }
+
+    pub fn remove_token(env: Env, admin: Address, token: Address) -> Result<(), Error> {
+        admin.require_auth();
+        let stored_admin: Address = env.storage().persistent().get(&DataKey::Admin).unwrap();
+        if admin != stored_admin {
+            return Err(Error::NotAuthorized);
+        }
+        env.storage().persistent().remove(&DataKey::AllowedToken(token));
+        Ok(())
+    }
+
+    pub fn is_token_allowed(env: Env, token: Address) -> bool {
+        env.storage().persistent().get(&DataKey::AllowedToken(token)).unwrap_or(false)
+    }
 }
 
 #[cfg(test)]

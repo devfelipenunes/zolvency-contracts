@@ -29,3 +29,24 @@ fn test_initialization() {
 
     assert_eq!(client.get_admin(), admin);
 }
+
+#[test]
+fn test_allowlist_management() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register(ZPayContract, ());
+    let client = ZPayContractClient::new(&env, &contract_id);
+    
+    let admin = Address::generate(&env);
+    let token = Address::generate(&env);
+    
+    client.initialize(&admin, &Address::generate(&env), &soroban_sdk::BytesN::from_array(&env, &[0; 32]), &0, &0, &Address::generate(&env), &Address::generate(&env));
+
+    assert_eq!(client.is_token_allowed(&token), false);
+    
+    client.add_token(&admin, &token);
+    assert_eq!(client.is_token_allowed(&token), true);
+    
+    client.remove_token(&admin, &token);
+    assert_eq!(client.is_token_allowed(&token), false);
+}
