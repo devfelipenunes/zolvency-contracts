@@ -1,5 +1,5 @@
 #![allow(clippy::enum_variant_names)]
-use soroban_sdk::{contracterror, contracttype, Address, Bytes, BytesN, Env, String};
+use soroban_sdk::{contracterror, contracttype, Address, Bytes, BytesN, String};
 
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]

@@ -8,7 +8,7 @@ mod types;
 mod test;
 
 use soroban_sdk::{
-    contract, contractimpl, token, Address, Env, IntoVal, String, Symbol, Vec,
+    contract, contractevent, contractimpl, token, Address, Env, IntoVal, String, Symbol, Vec,
 };
 
 pub use interface::ZolvencyTokenTrait;
@@ -19,6 +19,12 @@ pub use types::{
 
 #[contract]
 pub struct BinanceKycContract;
+
+#[contractevent]
+pub enum KycEvent {
+    Minted { soul_id: u32, token_id: u64, kyc_level: u32 },
+    Updated { soul_id: u32, token_id: u64, kyc_level: u32 },
+}
 
 #[contractimpl]
 impl ZolvencyTokenTrait for BinanceKycContract {
@@ -253,10 +259,12 @@ impl BinanceKycContract {
                 .into_val(&env),
         );
 
-        env.events().publish(
-            (Symbol::new(&env, "kyc_minted"),),
-            (params.soul_id, token_id, params.kyc_level.to_number()),
-        );
+        KycEvent::Minted {
+            soul_id: params.soul_id,
+            token_id,
+            kyc_level: params.kyc_level.to_number(),
+        }
+        .publish(&env);
 
         Ok(token_id)
     }
@@ -324,10 +332,12 @@ impl BinanceKycContract {
                 .into_val(&env),
         );
 
-        env.events().publish(
-            (Symbol::new(&env, "kyc_updated"),),
-            (data.soul_id, token_id, data.kyc_level.to_number()),
-        );
+        KycEvent::Updated {
+            soul_id: data.soul_id,
+            token_id,
+            kyc_level: data.kyc_level.to_number(),
+        }
+        .publish(&env);
 
         Ok(())
     }

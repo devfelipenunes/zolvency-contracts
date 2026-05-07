@@ -4,6 +4,7 @@ use crate::types::{
     Config, DataKey, Error, KycData,
 };
 
+#[allow(dead_code)]
 const KEY_CONFIG: &str = "CONFIG";
 const KEY_TOKEN_COUNTER: &str = "TOKEN_CTR";
 const KEY_SOUL_CONTRACT: &str = "SOUL";

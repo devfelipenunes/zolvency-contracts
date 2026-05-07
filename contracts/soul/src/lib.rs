@@ -7,17 +7,19 @@ mod storage;
 mod test;
 
 use soroban_sdk::{
-    contract, contractimpl, symbol_short, Address, Env, BytesN, Bytes,
+    contract, contractevent, contractimpl, symbol_short, Address, Env, BytesN, Bytes,
 };
 use crate::types::{Error, SoulData, DataKey};
 use crate::storage::{
     get_admin, get_relayer, get_total_souls, increment_total_souls, 
     set_soul, get_soul_by_id, get_soul_id_by_passkey, extend_instance,
-    remove_passkey_mapping
+    remove_passkey_mapping, get_soul_id_by_address
 };
 
 #[contract]
 pub struct ZolvencySoulContract;
+
+// Manual event publishing used to avoid macro panics in this SDK version
 
 #[contractimpl]
 impl ZolvencySoulContract {
@@ -51,6 +53,7 @@ impl ZolvencySoulContract {
     pub fn mint(
         env: Env,
         relayer: Address,
+        owner: Address,
         passkey: BytesN<65>,
         recovery_pubkey: BytesN<65>,
     ) -> Result<u32, Error> {
@@ -62,13 +65,14 @@ impl ZolvencySoulContract {
             return Err(Error::NotAuthorized);
         }
 
-        if get_soul_id_by_passkey(&env, &passkey).is_some() {
+        if get_soul_id_by_address(&env, &owner).is_some() {
             return Err(Error::SoulAlreadyExists);
         }
 
         let id = increment_total_souls(&env);
         let soul_data = SoulData {
             id,
+            owner,
             passkey,
             recovery_pubkey,
             minted_at: env.ledger().timestamp(),
@@ -76,10 +80,7 @@ impl ZolvencySoulContract {
 
         set_soul(&env, &soul_data);
 
-        env.events().publish(
-            (symbol_short!("soul"), symbol_short!("minted"), id),
-            id,
-        );
+        env.events().publish((symbol_short!("minted"),), id);
 
         Ok(id)
     }
@@ -89,15 +90,31 @@ impl ZolvencySoulContract {
         get_soul_by_id(&env, id)
     }
 
+    pub fn has_soul(env: Env, owner: Address) -> bool {
+        extend_instance(&env);
+        get_soul_id_by_address(&env, &owner).is_some()
+    }
+
+    pub fn get_soul_id_by_address(env: Env, owner: Address) -> Option<u32> {
+        extend_instance(&env);
+        get_soul_id_by_address(&env, &owner)
+    }
+
     pub fn get_soul_id_by_passkey(env: Env, passkey: BytesN<65>) -> Option<u32> {
         extend_instance(&env);
         get_soul_id_by_passkey(&env, &passkey)
     }
 
+    pub fn get_soul_by_address(env: Env, owner: Address) -> Option<SoulData> {
+        extend_instance(&env);
+        let id = get_soul_id_by_address(&env, &owner)?;
+        get_soul_by_id(&env, id)
+    }
+
     pub fn get_soul_by_passkey(env: Env, passkey: BytesN<65>) -> Option<SoulData> {
         extend_instance(&env);
-        let id = crate::storage::get_soul_id_by_passkey(&env, &passkey)?;
-        crate::storage::get_soul_by_id(&env, id)
+        let id = get_soul_id_by_passkey(&env, &passkey)?;
+        get_soul_by_id(&env, id)
     }
 
     pub fn recover_soul(
@@ -141,10 +158,7 @@ impl ZolvencySoulContract {
         soul_data.passkey = new_passkey.clone();
         set_soul(&env, &soul_data);
 
-        env.events().publish(
-            (symbol_short!("soul"), symbol_short!("recovered"), soul_id),
-            new_passkey,
-        );
+        env.events().publish((symbol_short!("reco"), soul_id), new_passkey);
 
         Ok(())
     }
@@ -160,10 +174,7 @@ impl ZolvencySoulContract {
 
         env.storage().instance().set(&DataKey::Relayer, &new_relayer);
         
-        env.events().publish(
-            (symbol_short!("relayer"), symbol_short!("updated")),
-            new_relayer,
-        );
+        env.events().publish((symbol_short!("relayer"),), new_relayer.clone());
         
         Ok(())
     }
@@ -196,10 +207,7 @@ impl ZolvencySoulContract {
         env.storage().instance().set(&DataKey::Admin, &new_admin);
         env.storage().instance().remove(&DataKey::PendingAdmin);
         
-        env.events().publish(
-            (symbol_short!("admin"), symbol_short!("updated")),
-            new_admin,
-        );
+        env.events().publish((symbol_short!("admin"),), new_admin.clone());
         
         Ok(())
     }

@@ -4,6 +4,7 @@ use crate::types::{
     Config, DataKey, Error, GithubData,
 };
 
+#[allow(dead_code)]
 const KEY_CONFIG: &str = "CONFIG";
 const KEY_TOKEN_COUNTER: &str = "TOKEN_CTR";
 
@@ -89,10 +90,12 @@ pub fn get_sybil_token(env: &Env, external_id: &soroban_sdk::String) -> Option<u
     token_id
 }
 
+#[allow(dead_code)]
 pub fn get_admin(env: &Env) -> Result<Address, Error> {
     Ok(get_config(env)?.admin)
 }
 
+#[allow(dead_code)]
 pub fn get_mint_fee(env: &Env) -> i128 {
     get_config(env).map(|c| c.mint_fee).unwrap_or(0)
 }
@@ -113,6 +116,7 @@ pub fn increment_token_counter(env: &Env) {
         .extend_ttl(key, ONE_YEAR, ONE_YEAR);
 }
 
+#[allow(dead_code)]
 pub fn update_token_data(env: &Env, token_id: u64, data: &GithubData) -> Result<(), Error> {
     let key = (Symbol::new(env, "TOK"), token_id);
     if !env.storage().persistent().has(&key) {
@@ -125,6 +129,7 @@ pub fn update_token_data(env: &Env, token_id: u64, data: &GithubData) -> Result<
     Ok(())
 }
 
+#[allow(dead_code)]
 pub fn extend_token_ttl(env: &Env, token_id: u64) -> Result<(), Error> {
     let key = (Symbol::new(env, "TOK"), token_id);
     if !env.storage().persistent().has(&key) {

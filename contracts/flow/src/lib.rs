@@ -8,7 +8,7 @@ mod types;
 mod test;
 
 use soroban_sdk::{
-    contract, contractimpl, token, Address, Env, IntoVal, String, Symbol, Vec,
+    contract, contractevent, contractimpl, token, Address, Env, IntoVal, String, Symbol, Vec,
 };
 
 pub use interface::ZolvencyTokenTrait;
@@ -19,6 +19,12 @@ pub use types::{
 
 #[contract]
 pub struct IncomeBankContract;
+
+#[contractevent]
+pub enum IncomeEvent {
+    Minted { soul_id: u32, token_id: u64, income_band: u32 },
+    Updated { soul_id: u32, token_id: u64, income_band: u32 },
+}
 
 #[contractimpl]
 impl ZolvencyTokenTrait for IncomeBankContract {
@@ -273,10 +279,12 @@ impl IncomeBankContract {
                 .into_val(&env),
         );
 
-        env.events().publish(
-            (Symbol::new(&env, "income_minted"),),
-            (params.soul_id, token_id, params.income_band),
-        );
+        IncomeEvent::Minted {
+            soul_id: params.soul_id,
+            token_id,
+            income_band: params.income_band,
+        }
+        .publish(&env);
 
         Ok(token_id)
     }
@@ -345,10 +353,12 @@ impl IncomeBankContract {
                 .into_val(&env),
         );
 
-        env.events().publish(
-            (Symbol::new(&env, "income_updated"),),
-            (data.soul_id, token_id, data.income_band),
-        );
+        IncomeEvent::Updated {
+            soul_id: data.soul_id,
+            token_id,
+            income_band: data.income_band,
+        }
+        .publish(&env);
 
         Ok(())
     }

@@ -1,4 +1,4 @@
-use soroban_sdk::{BytesN, Env, String, Symbol};
+use soroban_sdk::{Env, String, Symbol};
 
 use crate::types::TokenMetadata;
 

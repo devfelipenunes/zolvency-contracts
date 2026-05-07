@@ -33,12 +33,19 @@ pub fn increment_total_souls(env: &Env) -> u32 {
 pub fn set_soul(env: &Env, soul: &SoulData) {
     let id_key = DataKey::SoulById(soul.id);
     let pk_key = DataKey::SoulByPasskey(soul.passkey.clone());
+    let addr_key = DataKey::SoulByAddress(soul.owner.clone());
     
     env.storage().persistent().set(&id_key, soul);
     env.storage().persistent().set(&pk_key, &soul.id);
+    env.storage().persistent().set(&addr_key, &soul.id);
     
     extend_persistent(env, &id_key);
     extend_persistent(env, &pk_key);
+    extend_persistent(env, &addr_key);
+}
+
+pub fn get_soul_id_by_address(env: &Env, address: &Address) -> Option<u32> {
+    env.storage().persistent().get(&DataKey::SoulByAddress(address.clone()))
 }
 
 pub fn get_soul_id_by_passkey(env: &Env, passkey: &BytesN<65>) -> Option<u32> {

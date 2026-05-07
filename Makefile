@@ -1,4 +1,4 @@
-.PHONY: build test fmt lint clean deploy-testnet
+.PHONY: build test fmt lint clean deploy-testnet test-scripts
 
 # Configurações
 WASM_IDENTITY=contracts/github/target/wasm32-unknown-unknown/release/github_identity.wasm
@@ -11,6 +11,13 @@ build:
 test:
 	@echo "🧪 Running tests..."
 	cargo test
+
+test-scripts:
+	@echo "🧪 Running testnet validation scripts..."
+	cd .. && bash contracts/scripts/perfect_e2e_simulation.sh
+	cd .. && bash contracts/scripts/zpay_negative_cases.sh
+	cd .. && bash contracts/scripts/nexus_authority_cases.sh
+	cd .. && bash contracts/scripts/soul_negative_cases.sh
 
 fmt:
 	@echo "🎨 Formatting code..."

@@ -1,4 +1,4 @@
-use soroban_sdk::{contracterror, contracttype, BytesN, String, Bytes};
+use soroban_sdk::{contracterror, contracttype, BytesN, String, Bytes, Address};
 
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
@@ -22,12 +22,14 @@ pub enum DataKey {
     TotalSouls,
     SoulById(u32),                 // SoulID -> SoulData
     SoulByPasskey(BytesN<65>),     // Passkey PubKey -> SoulID
+    SoulByAddress(Address),        // Owner Address -> SoulID
 }
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SoulData {
     pub id: u32,
+    pub owner: Address,
     pub passkey: BytesN<65>,           // secp256r1 pubkey
     pub recovery_pubkey: BytesN<65>,   // secp256r1 pubkey for recovery
     pub minted_at: u64,

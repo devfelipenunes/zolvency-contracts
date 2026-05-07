@@ -9,10 +9,10 @@ authors = ["Felipe Nunes"]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-soroban-sdk = { version = "22.0.1" }
+soroban-sdk = { version = "25.3.1" }
 
 [dev-dependencies]
-soroban-sdk = { version = "22.0.1", features = ["testutils"] }
+soroban-sdk = { version = "25.3.1", features = ["testutils"] }
 nexus = { path = "../nexus", features = ["testutils"] }
 
 [features]

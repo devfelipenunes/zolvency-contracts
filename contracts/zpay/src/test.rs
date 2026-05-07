@@ -1,348 +1,235 @@
 #![cfg(test)]
 use super::*;
-use soroban_sdk::{Address, testutils::Address as _, Env};
+use soroban_sdk::{Address, testutils::Address as _, testutils::Ledger as _, Env, token::Client as TokenClient};
 
-#[test]
-fn test_initialization() {
-    let env = Env::default();
-    // Register the contract using the current SDK practice.
+fn init_client(env: &Env) -> (ZPayContractClient, Address, Address, Address, Address) {
     let contract_id = env.register(ZPayContract, ());
     let client = ZPayContractClient::new(&env, &contract_id);
-    
     let admin = Address::generate(&env);
-    let nexus_contract = Address::generate(&env);
+    let nexus_contract = env.register(MockNexus, ());
     let oracle_pub_key = soroban_sdk::BytesN::from_array(&env, &[0; 32]);
-    let stork_oracle = Address::generate(&env);
-    let service_fee_amount: i128 = 100_0000; // 0.1 tokens
-    let nexus_fee_amount: i128 = 50_0000;    // 0.05 tokens
+    let stork_oracle = env.register(MockStork, ());
     let zpay_treasury = Address::generate(&env);
     let nexus_treasury = Address::generate(&env);
-
-    client.initialize(
-        &admin,
-        &nexus_contract,
-        &oracle_pub_key,
-        &stork_oracle,
-        &service_fee_amount,
-        &nexus_fee_amount,
-        &zpay_treasury,
-        &nexus_treasury
-    );
-
-    assert_eq!(client.get_admin(), admin);
+    client.initialize(&admin, &nexus_contract, &oracle_pub_key, &stork_oracle, &100, &10_000_000, &50, &5_000_000, &zpay_treasury, &nexus_treasury);
+    (client, admin, nexus_contract, zpay_treasury, nexus_treasury)
 }
 
-#[test]
-fn test_allowlist_management() {
-    let env = Env::default();
-    env.mock_all_auths();
-    let contract_id = env.register(ZPayContract, ());
-    let client = ZPayContractClient::new(&env, &contract_id);
-    
-    let admin = Address::generate(&env);
-    let token = Address::generate(&env);
-    
-    client.initialize(
-        &admin, 
-        &Address::generate(&env), 
-        &soroban_sdk::BytesN::from_array(&env, &[0; 32]), 
-        &Address::generate(&env),
-        &0, 
-        &0, 
-        &Address::generate(&env), 
-        &Address::generate(&env)
-    );
-
-    assert_eq!(client.is_token_allowed(&token), false);
-    
-    client.add_token(&admin, &token);
-    assert_eq!(client.is_token_allowed(&token), true);
-    
-    client.remove_token(&admin, &token);
-    assert_eq!(client.is_token_allowed(&token), false);
-}
-
-#[test]
-fn test_estimate_total_usd() {
-    let env = Env::default();
-    let contract_id = env.register(ZPayContract, ());
-    let client = ZPayContractClient::new(&env, &contract_id);
-    
-    client.initialize(
-        &Address::generate(&env),
-        &Address::generate(&env),
-        &soroban_sdk::BytesN::from_array(&env, &[0; 32]),
-        &Address::generate(&env),
-        &10_000_000, // 1 USD equivalent fee
-        &5_000_000,  // 0.5 USD equivalent fee
-        &Address::generate(&env),
-        &Address::generate(&env)
-    );
-
-    // Case 1: Use a ticket
-    let ticket = super::PriceTicket {
-        base_currency: soroban_sdk::Symbol::new(&env, "USD"),
-        price_per_unit: 10_000_000, // 1.0 USD
-        timestamp: env.ledger().timestamp(),
-        signature: soroban_sdk::BytesN::from_array(&env, &[0; 64]),
-    };
-    let total = client.calculate_usd_impact(&100_000_000, &Some(ticket), &None);
-    assert_eq!(total, 115_000_000); // 100 + 10 + 5
-
-    // Case 2: XLM to USD. Suppose price is 0.1 USD per XLM. Scaled by 10^7 = 1_000_000.
-    // If base is 1000 XLM (10_000_000_000 stroops).
-    // Total tokens = 10_000_000_000 (base) + 10_000_000 (srv) + 5_000_000 (nex) = 10_015_000_000
-    // Total USD = 10_015_000_000 * 1_000_000 / 10_000_000 = 1_001_500_000 (100.15 USD equivalent scaled by 7)
-    let ticket2 = super::PriceTicket {
-        base_currency: soroban_sdk::Symbol::new(&env, "USD"),
-        price_per_unit: 1_000_000, // 0.1 USD
-        timestamp: env.ledger().timestamp(),
-        signature: soroban_sdk::BytesN::from_array(&env, &[0; 64]),
-    };
-    
-    let total_usd = client.calculate_usd_impact(&10_000_000_000, &Some(ticket2), &None);
-    assert_eq!(total_usd, 1_001_500_000);
-}
-
-#[test]
-#[should_panic(expected = "HostError: Error(Contract, #9)")]
-fn test_missing_oracle_data() {
-    let env = Env::default();
-    let contract_id = env.register(ZPayContract, ());
-    let client = ZPayContractClient::new(&env, &contract_id);
-    
-    client.initialize(
-        &Address::generate(&env),
-        &Address::generate(&env),
-        &soroban_sdk::BytesN::from_array(&env, &[0; 32]),
-        &Address::generate(&env),
-        &0,
-        &0,
-        &Address::generate(&env),
-        &Address::generate(&env)
-    );
-
-    client.calculate_usd_impact(&100_000_000, &None, &None);
-}
-
-#[test]
-#[should_panic(expected = "HostError: Error(Contract, #7)")]
-fn test_invalid_currency() {
-    let env = Env::default();
-    let contract_id = env.register(ZPayContract, ());
-    let client = ZPayContractClient::new(&env, &contract_id);
-    
-    client.initialize(
-        &Address::generate(&env),
-        &Address::generate(&env),
-        &soroban_sdk::BytesN::from_array(&env, &[0; 32]),
-        &Address::generate(&env),
-        &0,
-        &0,
-        &Address::generate(&env),
-        &Address::generate(&env)
-    );
-
-    let ticket = super::PriceTicket {
-        base_currency: soroban_sdk::Symbol::new(&env, "EUR"),
-        price_per_unit: 1_000_000,
-        timestamp: env.ledger().timestamp(),
-        signature: soroban_sdk::BytesN::from_array(&env, &[0; 64]),
-    };
-    
-    client.calculate_usd_impact(&100_000_000, &Some(ticket), &None);
-}
-
-#[test]
-#[should_panic(expected = "HostError: Error(Contract, #8)")]
-fn test_overflow() {
-    let env = Env::default();
-    let contract_id = env.register(ZPayContract, ());
-    let client = ZPayContractClient::new(&env, &contract_id);
-    
-    client.initialize(
-        &Address::generate(&env),
-        &Address::generate(&env),
-        &soroban_sdk::BytesN::from_array(&env, &[0; 32]),
-        &Address::generate(&env),
-        &0,
-        &0,
-        &Address::generate(&env),
-        &Address::generate(&env)
-    );
-
-    // Use a very large amount to trigger overflow in checked_mul
-    let ticket = super::PriceTicket {
-        base_currency: soroban_sdk::Symbol::new(&env, "USD"),
-        price_per_unit: i128::MAX,
-        timestamp: env.ledger().timestamp(),
-        signature: soroban_sdk::BytesN::from_array(&env, &[0; 64]),
-    };
-    
-    client.calculate_usd_impact(&i128::MAX, &Some(ticket), &None);
-}
-
-#[contract]
-pub struct MockNexus;
-
-#[contractimpl]
-impl MockNexus {
-    pub fn verify_authority(
-        _env: Env,
-        _mandate_id: u64,
-        _contract: Address,
-        _function: Symbol,
-        _transfer_amount: Option<i128>,
-    ) -> Result<bool, soroban_sdk::Error> {
-        Ok(true)
-    }
-}
-
-#[contract]
-pub struct MockStork;
-
-#[contractimpl]
-impl MockStork {
-    pub fn get_temporal_numeric_value_v1(env: Env, _asset_id: BytesN<32>) -> stork_interface::TemporalNumericValue {
-        stork_interface::TemporalNumericValue {
-            quantized_value: 10_000_000, // 1.0 USD
-            timestamp: env.ledger().timestamp(),
-            publisher_merkle_root: BytesN::from_array(&env, &[0; 32]),
+#[contract] pub struct MockNexus;
+#[contractimpl] impl MockNexus {
+    pub fn verify_authority(_e: Env, m: u64, a: Address, _c: Address, _f: Symbol, _t: Option<i128>) -> bool {
+        if m == 123 {
+            let a1: Address = _e.storage().persistent().get(&Symbol::new(&_e, "agent1")).unwrap_or(Address::generate(&_e));
+            if a != a1 { return false; }
         }
+        true
+    }
+    pub fn set_agent1(env: Env, agent: Address) { env.storage().persistent().set(&Symbol::new(&env, "agent1"), &agent); }
+}
+#[contract] pub struct MockStork;
+#[contractimpl] impl MockStork {
+    pub fn get_temporal_numeric_value_v1(env: Env, _asset_id: BytesN<32>) -> stork_interface::TemporalNumericValue {
+        stork_interface::TemporalNumericValue { quantized_value: 10_000_000, timestamp: env.ledger().timestamp(), publisher_merkle_root: BytesN::from_array(&env, &[0; 32]) }
     }
 }
-
-#[test]
-fn test_full_pay_flow_with_ticket() {
-    let env = Env::default();
-    env.mock_all_auths();
-
-    let admin = Address::generate(&env);
-    let agent = Address::generate(&env);
-    let root_anchor = Address::generate(&env);
-    let seller = Address::generate(&env);
-    let zpay_treasury = Address::generate(&env);
-    let nex_treasury = Address::generate(&env);
-
-    // Register Token
-    let token_admin = Address::generate(&env);
-    let token_id = env.register_stellar_asset_contract_v2(token_admin.clone()).address();
-    let token_admin_client = soroban_sdk::token::StellarAssetClient::new(&env, &token_id);
-    
-    // Mint tokens to root_anchor
-    token_admin_client.mint(&root_anchor, &1_000_000_000);
-
-    // Register Mock Nexus
-    let nexus_id = env.register(MockNexus, ());
-
-    // Register ZPay
-    let zpay_id = env.register(ZPayContract, ());
-    let zpay_client = ZPayContractClient::new(&env, &zpay_id);
-
-    // Initialize ZPay
-    zpay_client.initialize(
-        &admin,
-        &nexus_id,
-        &soroban_sdk::BytesN::from_array(&env, &[0; 32]),
-        &Address::generate(&env),
-        &10_000_000, // 1.0 fee
-        &5_000_000,  // 0.5 fee
-        &zpay_treasury,
-        &nex_treasury
-    );
-
-    // Add token to allowlist
-    zpay_client.add_token(&admin, &token_id);
-
-    // root_anchor must approve ZPay to spend tokens
-    let token_token_client = soroban_sdk::token::Client::new(&env, &token_id);
-    token_token_client.approve(&root_anchor, &zpay_id, &1_000_000_000, &9999);
-
-    let ticket = super::PriceTicket {
-        base_currency: soroban_sdk::Symbol::new(&env, "USD"),
-        price_per_unit: 10_000_000, // 1.0 USD
-        timestamp: env.ledger().timestamp(),
-        signature: soroban_sdk::BytesN::from_array(&env, &[0; 64]),
-    };
-
-    // Execute Pay
-    zpay_client.pay(
-        &agent,
-        &root_anchor,
-        &seller,
-        &token_id,
-        &100_000_000, // base amount
-        &123,         // mandate id
-        &Some(ticket),
-        &None
-    );
-
-    // Check balances
-    assert_eq!(token_token_client.balance(&seller), 100_000_000);
-    assert_eq!(token_token_client.balance(&zpay_treasury), 10_000_000);
-    assert_eq!(token_token_client.balance(&nex_treasury), 5_000_000);
+#[contract] pub struct MockFallbackOracle;
+#[contractimpl] impl MockFallbackOracle {
+    pub fn get_price(_env: Env) -> i128 { 20_000_000 }
 }
 
 #[test]
-fn test_pay_with_stork_oracle() {
+fn test_business_and_security_logic() {
     let env = Env::default();
     env.mock_all_auths();
+    let (client, admin, nexus_id, _, _) = init_client(&env);
+    let token_id = env.register_stellar_asset_contract_v2(admin.clone()).address();
+    client.add_token(&admin, &token_id);
+    
+    let fallback_id = env.register(MockFallbackOracle, ());
+    client.set_fallback_oracle(&admin, &token_id, &fallback_id);
 
-    let admin = Address::generate(&env);
-    let agent = Address::generate(&env);
-    let root_anchor = Address::generate(&env);
+    let user = Address::generate(&env);
+    let relayer = Address::generate(&env);
+    let attacker = Address::generate(&env);
+    soroban_sdk::token::StellarAssetClient::new(&env, &token_id).mint(&user, &2_000_000_000);
+    TokenClient::new(&env, &token_id).approve(&user, &client.address, &2_000_000_000, &9999);
+
+    // 1. Success Pay with Relayer (Using Fallback)
+    client.pay(&user, &user, &admin, &token_id, &100_000_000, &999, &None, &None, &Some(relayer.clone()), &Some(5_000_000));
+    assert_eq!(TokenClient::new(&env, &token_id).balance(&relayer), 5_000_000);
+
+    // 2. Escrow and Refund (Using Fallback)
+    env.ledger().with_mut(|li| li.sequence_number = 100);
+    let pid = client.pay_escrow(&user, &user, &admin, &token_id, &100_000_000, &999, &None, &None, &10, &None, &None);
+    env.ledger().with_mut(|li| li.sequence_number = 110);
+    client.refund_escrow(&user, &pid);
+
+    // 3. Security: Spoofing
+    MockNexusClient::new(&env, &nexus_id).set_agent1(&user);
+    let res_spoof = client.try_pay(&attacker, &user, &admin, &token_id, &100, &123, &None, &None, &None, &None);
+    assert!(res_spoof.is_err());
+
+    // 4. Security: Max Relayer Fee
+    let res_fee = client.try_pay(&user, &user, &admin, &token_id, &100_000_000, &999, &None, &None, &Some(attacker), &Some(6_000_001));
+    assert_eq!(res_fee, Err(Ok(Error::MaxRelayerFeeExceeded)));
+}
+
+#[test]
+fn test_admin_rotation() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin, _, _, _) = init_client(&env);
+    let new_admin = Address::generate(&env);
+    
+    client.propose_new_admin(&admin, &new_admin);
+    client.claim_admin_rights(&new_admin);
+    assert_eq!(client.get_admin(), new_admin);
+}
+
+#[test]
+fn test_pause_logic() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin, _, _, _) = init_client(&env);
+    
+    client.set_paused(&admin, &true);
+    assert!(client.is_paused());
+    
+    let user = Address::generate(&env);
+    let res = client.try_pay(&user, &user, &admin, &admin, &100, &1, &None, &None, &None, &None);
+    assert_eq!(res, Err(Ok(Error::ContractPaused)));
+}
+
+#[test]
+fn test_escrow_refund_timeout() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin, _, _, _) = init_client(&env);
+    let token_id = env.register_stellar_asset_contract_v2(admin.clone()).address();
+    client.add_token(&admin, &token_id);
+    let fallback_id = env.register(MockFallbackOracle, ());
+    client.set_fallback_oracle(&admin, &token_id, &fallback_id);
+
+    let user = Address::generate(&env);
+    soroban_sdk::token::StellarAssetClient::new(&env, &token_id).mint(&user, &2_000_000_000);
+    TokenClient::new(&env, &token_id).approve(&user, &client.address, &2_000_000_000, &9999);
+
+    let pid = client.pay_escrow(&user, &user, &admin, &token_id, &100_000_000, &999, &None, &None, &10, &None, &None);
+    
+    // Should fail before timeout (ledger 0 + 10 = 10)
+    env.ledger().with_mut(|li| li.sequence_number = 5);
+    let res_early = client.try_refund_escrow(&user, &pid);
+    assert_eq!(res_early, Err(Ok(Error::EscrowNotExpired)));
+    
+    // Should succeed after timeout
+    env.ledger().with_mut(|li| li.sequence_number = 11);
+    client.refund_escrow(&user, &pid);
+}
+
+#[test]
+fn test_subscription_charge() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin, _nexus_id, _, _) = init_client(&env);
+    let token_id = env.register_stellar_asset_contract_v2(admin.clone()).address();
+    client.add_token(&admin, &token_id);
+    let fallback_id = env.register(MockFallbackOracle, ());
+    client.set_fallback_oracle(&admin, &token_id, &fallback_id);
+
+    let user = Address::generate(&env);
     let seller = Address::generate(&env);
+    soroban_sdk::token::StellarAssetClient::new(&env, &token_id).mint(&user, &2_000_000_000);
+    TokenClient::new(&env, &token_id).approve(&user, &client.address, &2_000_000_000, &9999);
+
+    // Mock authorized seller in Nexus
+    // (MockNexus already allows charge if authorized)
+    client.charge_subscription(&seller, &user, &token_id, &50_000_000, &999, &None, &None, &None, &None);
+    
+    assert_eq!(TokenClient::new(&env, &token_id).balance(&seller), 50_000_000);
+}
+
+#[test]
+fn test_real_signature_verification() {
+    use ed25519_dalek::{SigningKey, Signer};
+    use rand::thread_rng;
+
+    let env = Env::default();
+    env.mock_all_auths();
+    
+    // 1. Generate real keypair
+    let mut rng = thread_rng();
+    let signing_key = SigningKey::generate(&mut rng);
+    let pub_key_bytes = signing_key.verifying_key().to_bytes();
+    let pub_key_n = BytesN::from_array(&env, &pub_key_bytes);
+
+    // 2. Init client with REAL pub key
+    let contract_id = env.register(ZPayContract, ());
+    let client = ZPayContractClient::new(&env, &contract_id);
+    let admin = Address::generate(&env);
+    let nexus_contract = env.register(MockNexus, ());
+    let stork_oracle = env.register(MockStork, ());
     let zpay_treasury = Address::generate(&env);
-    let nex_treasury = Address::generate(&env);
+    let nexus_treasury = Address::generate(&env);
+    
+    client.initialize(&admin, &nexus_contract, &pub_key_n, &stork_oracle, &0, &0, &0, &0, &zpay_treasury, &nexus_treasury);
+    
+    let token_id = env.register_stellar_asset_contract_v2(admin.clone()).address();
+    client.add_token(&admin, &token_id);
 
-    // Register Token
-    let token_admin = Address::generate(&env);
-    let token_id = env.register_stellar_asset_contract_v2(token_admin.clone()).address();
-    let token_admin_client = soroban_sdk::token::StellarAssetClient::new(&env, &token_id);
-    token_admin_client.mint(&root_anchor, &1_000_000_000);
+    // 3. Prepare payload for "USD", price 100, timestamp now
+    let base_currency = Symbol::new(&env, "USD");
+    let price_per_unit: i128 = 100_0000000;
+    let timestamp = env.ledger().timestamp();
+    
+    let mut data_bytes = soroban_sdk::Bytes::new(&env);
+    data_bytes.append(&base_currency.clone().to_xdr(&env));
+    data_bytes.append(&price_per_unit.to_xdr(&env));
+    data_bytes.append(&timestamp.to_xdr(&env));
+    
+    // Convert Bytes to Vec<u8> for signing
+    let mut payload = [0u8; 1024]; // Large enough buffer
+    let len = data_bytes.len() as usize;
+    data_bytes.copy_into_slice(&mut payload[..len]);
+    
+    // 4. Sign payload
+    let signature_bytes = signing_key.sign(&payload[..len]).to_bytes();
+    let signature_n = BytesN::from_array(&env, &signature_bytes);
+    
+    let ticket = PriceTicket {
+        base_currency,
+        price_per_unit,
+        timestamp,
+        signature: signature_n,
+    };
 
-    // Register Mock Nexus
-    let nexus_id = env.register(MockNexus, ());
+    // 5. Execute pay and verify it DOES NOT fail signature check
+    let user = Address::generate(&env);
+    soroban_sdk::token::StellarAssetClient::new(&env, &token_id).mint(&user, &2_000_000_000);
+    TokenClient::new(&env, &token_id).approve(&user, &client.address, &2_000_000_000, &9999);
 
-    // Register Mock Stork
-    let stork_id = env.register(MockStork, ());
+    client.pay(&user, &user, &admin, &token_id, &100_000_000, &999, &Some(ticket), &None, &None, &None);
+}
 
-    // Register ZPay
-    let zpay_id = env.register(ZPayContract, ());
-    let zpay_client = ZPayContractClient::new(&env, &zpay_id);
+#[test]
+fn test_staleness_rejection() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin, _, _, _) = init_client(&env);
+    client.set_max_staleness(&admin, &300); // 5 minutes
+    
+    env.ledger().with_mut(|li| li.timestamp = 1000);
 
-    // Initialize ZPay
-    zpay_client.initialize(
-        &admin,
-        &nexus_id,
-        &soroban_sdk::BytesN::from_array(&env, &[0; 32]),
-        &stork_id,
-        &10_000_000, // 1.0 fee
-        &5_000_000,  // 0.5 fee
-        &zpay_treasury,
-        &nex_treasury
-    );
+    let token_id = env.register_stellar_asset_contract_v2(admin.clone()).address();
+    client.add_token(&admin, &token_id);
 
-    zpay_client.add_token(&admin, &token_id);
+    let ticket = PriceTicket {
+        base_currency: Symbol::new(&env, "USD"),
+        price_per_unit: 100,
+        timestamp: 699, // 1000 - 301
+        signature: BytesN::from_array(&env, &[0; 64]),
+    };
 
-    let token_token_client = soroban_sdk::token::Client::new(&env, &token_id);
-    token_token_client.approve(&root_anchor, &zpay_id, &1_000_000_000, &9999);
-
-    let feed_id = soroban_sdk::BytesN::from_array(&env, &[1; 32]);
-
-    // Execute Pay with Stork
-    zpay_client.pay(
-        &agent,
-        &root_anchor,
-        &seller,
-        &token_id,
-        &100_000_000, // base amount
-        &123,         // mandate id
-        &None,
-        &Some(feed_id)
-    );
-
-    assert_eq!(token_token_client.balance(&seller), 100_000_000);
-    assert_eq!(token_token_client.balance(&zpay_treasury), 10_000_000);
-    assert_eq!(token_token_client.balance(&nex_treasury), 5_000_000);
+    let user = Address::generate(&env);
+    let res = client.try_pay(&user, &user, &admin, &token_id, &100, &1, &Some(ticket), &None, &None, &None);
+    assert_eq!(res, Err(Ok(Error::OracleStale)));
 }

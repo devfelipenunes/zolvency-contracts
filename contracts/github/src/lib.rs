@@ -103,7 +103,7 @@ impl GithubIdentityContract {
 
         // --- 🔒 VERIFICAÇÃO ON-CHAIN DA PROVA ZK (RECLAIM) ---
         // 1. Validar Assinatura via Host Function Nativa (Ed25519)
-        let signature = params.proof.signatures.get(0).ok_or(Error::InvalidSignature)?;
+        let _signature = params.proof.signatures.get(0).ok_or(Error::InvalidSignature)?;
         
         #[cfg(not(any(test, feature = "testutils")))]
         env.crypto().ed25519_verify(
@@ -228,12 +228,13 @@ fn u32_to_bytes(env: &Env, n: u32) -> Bytes {
 fn contains(_env: &Env, haystack_str: &String, needle: &Bytes) -> bool {
     // Fallback simple implementation for compatibility
     // In production, this would use a proper ZK proof field check
-    let haystack_xdr = haystack_str.clone().to_xdr(_env);
-    let needle_xdr = needle.to_xdr(_env);
+    let _haystack_xdr = haystack_str.clone().to_xdr(_env);
+    let _needle_xdr = needle.to_xdr(_env);
     
     // Check if needle exists within haystack (simple check)
-    #[cfg(any(test, feature = "testutils"))]
-    return true;
-    
-    haystack_xdr.len() >= needle_xdr.len()
+    if cfg!(any(test, feature = "testutils")) {
+        return true;
+    }
+
+    _haystack_xdr.len() >= _needle_xdr.len()
 }

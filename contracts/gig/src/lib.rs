@@ -8,7 +8,7 @@ mod types;
 mod test;
 
 use soroban_sdk::{
-    contract, contractimpl, token, Address, Env, IntoVal, String, Symbol, Vec,
+    contract, contractevent, contractimpl, token, Address, Env, IntoVal, String, Symbol, Vec,
 };
 
 pub use interface::ZolvencyTokenTrait;
@@ -20,6 +20,12 @@ pub use types::{
 
 #[contract]
 pub struct UberIncomeContract;
+
+#[contractevent]
+pub enum GigEvent {
+    Minted { soul_id: u32, token_id: u64, income_band: u32 },
+    Updated { soul_id: u32, token_id: u64, income_band: u32 },
+}
 
 #[contractimpl]
 impl ZolvencyTokenTrait for UberIncomeContract {
@@ -193,10 +199,12 @@ impl UberIncomeContract {
 
         storage::increment_nonce(&env, params.soul_id);
 
-        env.events().publish(
-            (Symbol::new(&env, "gig_minted"),),
-            (params.soul_id, token_id, params.income_band),
-        );
+        GigEvent::Minted {
+            soul_id: params.soul_id,
+            token_id,
+            income_band: params.income_band,
+        }
+        .publish(&env);
 
         Ok(token_id)
     }
@@ -264,10 +272,12 @@ impl UberIncomeContract {
 
         storage::increment_nonce(&env, data.soul_id);
 
-        env.events().publish(
-            (Symbol::new(&env, "gig_updated"),),
-            (data.soul_id, token_id, data.income_band),
-        );
+        GigEvent::Updated {
+            soul_id: data.soul_id,
+            token_id,
+            income_band: data.income_band,
+        }
+        .publish(&env);
 
         Ok(())
     }

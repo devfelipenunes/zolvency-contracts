@@ -6,7 +6,7 @@ set -e
 # Load .env
 source .env
 
-STELLAR_CLI="./.bin/stellar"
+STELLAR_CLI="./.bin/stellar-cli"
 NETWORK="testnet"
 
 echo "🌟 Starting Soul-Centric Testnet Deployment..."

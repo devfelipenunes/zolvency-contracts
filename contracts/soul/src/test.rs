@@ -24,7 +24,8 @@ fn test_soul_mint() {
     let passkey = BytesN::from_array(&env, &[0u8; 65]);
     let recovery_pubkey = BytesN::from_array(&env, &[1u8; 65]);
 
-    let id = client.mint(&relayer, &passkey, &recovery_pubkey);
+    let owner = Address::generate(&env);
+    let id = client.mint(&relayer, &owner, &passkey, &recovery_pubkey);
 
     assert_eq!(id, 1);
     assert_eq!(client.total_souls(), 1);
@@ -53,7 +54,8 @@ fn test_get_soul_by_passkey() {
     let passkey = BytesN::from_array(&env, &[1u8; 65]);
     let recovery_pubkey = BytesN::from_array(&env, &[2u8; 65]);
 
-    client.mint(&relayer, &passkey, &recovery_pubkey);
+    let owner = Address::generate(&env);
+    client.mint(&relayer, &owner, &passkey, &recovery_pubkey);
 
     let soul = client.get_soul_by_passkey(&passkey).unwrap();
     assert_eq!(soul.passkey, passkey);
@@ -79,7 +81,8 @@ fn test_recover_soul_invalid_signature() {
     let new_passkey = BytesN::from_array(&env, &[3u8; 65]);
     let dummy_sig = BytesN::from_array(&env, &[0u8; 64]);
 
-    client.mint(&relayer, &old_passkey, &recovery_pubkey);
+    let owner = Address::generate(&env);
+    client.mint(&relayer, &owner, &old_passkey, &recovery_pubkey);
 
     client.recover_soul(&relayer, &old_passkey, &new_passkey, &dummy_sig);
 }
@@ -116,7 +119,8 @@ fn test_recover_soul_success() {
         0x04, 0x83, 0x17, 0x9b, 0x33, 0xb9, 0x7b, 0x61, 0x82, 0x8a, 0x54, 0x1a, 0x3e, 0x7a, 0x51, 0xc6
     ]);
 
-    let id = client.mint(&relayer, &old_passkey, &recovery_pubkey);
+    let owner = Address::generate(&env);
+    let id = client.mint(&relayer, &owner, &old_passkey, &recovery_pubkey);
     assert_eq!(id, 1);
 
     // Recover soul (updates passkey)
@@ -151,7 +155,8 @@ fn test_recover_soul_unauthorized_relayer() {
     let new_passkey = BytesN::from_array(&env, &[3u8; 65]);
     let dummy_sig = BytesN::from_array(&env, &[0u8; 64]);
 
-    client.mint(&relayer, &old_passkey, &recovery_pubkey);
+    let owner = Address::generate(&env);
+    client.mint(&relayer, &owner, &old_passkey, &recovery_pubkey);
 
     client.recover_soul(&wrong_relayer, &old_passkey, &new_passkey, &dummy_sig);
 }
@@ -173,8 +178,9 @@ fn test_soul_already_exists() {
     let passkey = BytesN::from_array(&env, &[0u8; 65]);
     let recovery_pubkey = BytesN::from_array(&env, &[1u8; 65]);
 
-    client.mint(&relayer, &passkey, &recovery_pubkey);
-    client.mint(&relayer, &passkey, &recovery_pubkey);
+    let owner = Address::generate(&env);
+    client.mint(&relayer, &owner, &passkey, &recovery_pubkey);
+    client.mint(&relayer, &owner, &passkey, &recovery_pubkey);
 }
 
 #[test]
@@ -200,6 +206,7 @@ fn test_unauthorized_mint() {
     let attacker = Address::generate(&env);
     client.initialize(&admin, &relayer);
 
-    let res = client.try_mint(&attacker, &BytesN::from_array(&env, &[0u8; 65]), &BytesN::from_array(&env, &[0u8; 65]));
+    let owner = Address::generate(&env);
+    let res = client.try_mint(&attacker, &owner, &BytesN::from_array(&env, &[0u8; 65]), &BytesN::from_array(&env, &[0u8; 65]));
     assert_eq!(res, Err(Ok(Error::NotAuthorized)));
 }

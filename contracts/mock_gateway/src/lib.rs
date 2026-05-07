@@ -1,17 +1,31 @@
 #![no_std]
-use soroban_sdk::{contract, contractimpl, Env, Address, String, Bytes, Symbol};
+use soroban_sdk::{contract, contractevent, contractimpl, Env, Address, String, Bytes};
 
 #[contract]
 pub struct MockGateway;
+
+#[contractevent]
+pub enum MockGatewayEvent {
+    AxelarMsgSent {
+        sender: Address,
+        destination_chain: String,
+        destination_address: String,
+        payload: Bytes,
+    },
+    GasPaid,
+}
 
 #[contractimpl]
 impl MockGateway {
     pub fn call_contract(env: Env, sender: Address, destination_chain: String, destination_address: String, payload: Bytes) {
         // Just emit an event to prove it was called
-        env.events().publish(
-            (Symbol::new(&env, "axelar_msg_sent"), sender),
-            (destination_chain, destination_address, payload)
-        );
+        MockGatewayEvent::AxelarMsgSent {
+            sender,
+            destination_chain,
+            destination_address,
+            payload,
+        }
+        .publish(&env);
     }
 
     pub fn pay_gas(
@@ -25,6 +39,6 @@ impl MockGateway {
         _params: Bytes,
     ) {
         // Mock gas payment success
-        env.events().publish((Symbol::new(&env, "gas_paid"),), ());
+        MockGatewayEvent::GasPaid.publish(&env);
     }
 }

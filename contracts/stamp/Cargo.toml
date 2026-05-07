@@ -9,11 +9,11 @@ authors = ["Felipe Nunes"]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-soroban-sdk = "22.0.1"
+soroban-sdk = "25.3.1"
 itoa = "1.0"
 
 [dev-dependencies]
-soroban-sdk = { version = "22.0.1", features = ["testutils"] }
+soroban-sdk = { version = "25.3.1", features = ["testutils"] }
 nexus = { path = "../nexus", features = ["testutils"] }
 zolvency-soul = { path = "../soul", features = ["testutils"] }
 

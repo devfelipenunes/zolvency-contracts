@@ -6,6 +6,7 @@ use soroban_sdk::{
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AgentAuthData {
+    pub mandate_id: u64,
     pub expiry: u64,
     pub human_owner: Address,
 }
@@ -62,12 +63,14 @@ impl ZolvencyAgentSBT {
         env: Env,
         human_owner: Address,
         agent: Address,
+        mandate_id: u64,
         expiry: u64,
     ) -> Result<(), Error> {
         let registry: Address = env.storage().instance().get(&DataKey::Registry).ok_or(Error::NotAuthorized)?;
         registry.require_auth();
 
         let data = AgentAuthData {
+            mandate_id,
             expiry,
             human_owner,
         };
