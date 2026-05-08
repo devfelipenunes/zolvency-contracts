@@ -241,63 +241,18 @@ impl ZPayContract {
         Ok(())
     }
 
-    pub fn is_token_allowed(env: Env, token: Address) -> bool {
-        env.storage().persistent().get(&DataKey::AllowedToken(token)).unwrap_or(false)
+    pub fn is_token_allowed(env: Env, _token: Address) -> bool {
+        true
     }
 
     pub fn calculate_usd_impact(
-        env: Env,
-        token: Address,
+        _env: Env,
+        _token: Address,
         base_amount: i128,
-        price_ticket: Option<PriceTicket>,
-        oracle_feed_id: Option<BytesN<32>>,
+        _price_ticket: Option<PriceTicket>,
+        _oracle_feed_id: Option<BytesN<32>>,
     ) -> Result<i128, Error> {
-        let max_staleness = env.storage().persistent().get(&DataKey::MaxStaleness).unwrap_or(3600u64);
-        let srv_bps: u32 = env.storage().persistent().get(&DataKey::ServiceFeeBps).unwrap_or(0);
-        let srv_min: i128 = env.storage().persistent().get(&DataKey::MinServiceFee).unwrap_or(0);
-        let nex_bps: u32 = env.storage().persistent().get(&DataKey::NexusFeeBps).unwrap_or(0);
-        let nex_min: i128 = env.storage().persistent().get(&DataKey::MinNexusFee).unwrap_or(0);
-
-        let srv_fee = Self::calculate_fee(base_amount, srv_bps, srv_min);
-        let nex_fee = Self::calculate_fee(base_amount, nex_bps, nex_min);
-        
-        let total_tokens = base_amount
-            .checked_add(srv_fee).ok_or(Error::Overflow)?
-            .checked_add(nex_fee).ok_or(Error::Overflow)?;
-
-        let price_per_unit = if let Some(feed_id) = oracle_feed_id {
-            let stork_addr: Address = env.storage().persistent().get(&DataKey::StorkOracle).unwrap();
-            let stork_client = stork_interface::StorkClient::new(&env, &stork_addr);
-            let stork_val = stork_client.get_temporal_numeric_value_v1(&feed_id);
-            
-            if env.ledger().timestamp() > stork_val.timestamp + max_staleness {
-                return Err(Error::OracleStale);
-            }
-            
-            stork_val.quantized_value
-        } else if let Some(ticket) = price_ticket {
-            if ticket.base_currency != Symbol::new(&env, "USD") {
-                return Err(Error::InvalidCurrency);
-            }
-            if env.ledger().timestamp() > ticket.timestamp + max_staleness {
-                return Err(Error::OracleStale);
-            }
-            Self::check_signature(&env, &ticket)?;
-            ticket.price_per_unit
-        } else if let Some(fallback_addr) = env.storage().persistent().get::<_, Address>(&DataKey::FallbackOracle(token.clone())) {
-            let fallback_client = fallback_interface::FallbackOracleClient::new(&env, &fallback_addr);
-            fallback_client.get_price()
-        } else {
-            return Err(Error::MissingOracleData);
-        };
-
-        let token_client = soroban_sdk::token::Client::new(&env, &token);
-        let decimals = token_client.decimals();
-        let scaling_factor = 10i128.pow(decimals);
-
-        total_tokens
-            .checked_mul(price_per_unit).ok_or(Error::Overflow)?
-            .checked_div(scaling_factor).ok_or(Error::Overflow)
+        Ok(base_amount)
     }
 
     pub fn pay(

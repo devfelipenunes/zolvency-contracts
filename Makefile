@@ -6,7 +6,7 @@ WASM_REGISTRY=contracts/nexus/target/wasm32-unknown-unknown/release/nexus.wasm
 
 build:
 	@echo "🔨 Building contracts..."
-	RUSTFLAGS="-C target-feature=-sign-ext -C target-feature=-mutable-globals -C target-feature=-reference-types -C target-feature=-bulk-memory" stellar contract build
+	stellar contract build --target wasm32v1-none
 
 test:
 	@echo "🧪 Running tests..."

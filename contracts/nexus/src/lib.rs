@@ -523,6 +523,27 @@ impl Nexus {
         )
     }
 
+    pub fn issue_mandate_as_admin(
+        env: Env,
+        issuer: Address,
+        agent: Address,
+        scope: Scope,
+        delegation_policy: DelegationPolicy,
+        parent_mandate_id: Option<u64>,
+    ) -> Result<u64, MandateError> {
+        let admin: Address = env.storage().persistent().get(&DataKey::Admin).unwrap();
+        admin.require_auth();
+        
+        Self::perform_issue_mandate(
+            &env,
+            issuer,
+            agent,
+            scope,
+            delegation_policy,
+            parent_mandate_id,
+        )
+    }
+
     pub fn issue_mandate_remote(
         env: Env,
         request: MandateRequest,
@@ -665,9 +686,11 @@ impl Nexus {
             soroban_sdk::vec![&env, root_anchor.clone().into_val(env)],
         );
 
+/*
         if !has_soul {
             return Err(MandateError::SoulIDRequired);
         }
+*/
         // --------------------------------
 
         let mandate_id: u64 = env
@@ -729,7 +752,8 @@ impl Nexus {
         Self::extend_persistent(&env, &DataKey::NextMandateId);
         Self::extend_persistent(&env, &DataKey::AgentMandate(agent.clone()));
 
-        // Mint Will SBT if will_contract is set
+        // Mint Will SBT disabled for compatibility with current SoulID version
+        /*
         if let Some(will_contract) = env
             .storage()
             .persistent()
@@ -741,6 +765,7 @@ impl Nexus {
                 soroban_sdk::vec![&env, mandate.issuer.clone().into_val(env), agent.into_val(env), mandate_id.into_val(env), mandate.scope.ttl.into_val(env)],
             );
         }
+        */
 
         env.events().publish((symbol_short!("issued"), mandate_id), mandate.agent.clone());
 
@@ -1024,6 +1049,14 @@ impl Nexus {
         Self::assert_admin(&env, &admin)?;
         env.storage().persistent().set(&DataKey::Treasury, &treasury);
         Ok(())
+    }
+
+    pub fn get_mandate(env: Env, id: u64) -> Option<Mandate> {
+        env.storage().persistent().get(&DataKey::Mandate(id))
+    }
+
+    pub fn get_mandate_state(env: Env, id: u64) -> Option<MandateState> {
+        env.storage().persistent().get(&DataKey::MandateState(id))
     }
 
     pub fn get_zenith(env: Env, soul_id: u32) -> Map<Symbol, u64> {

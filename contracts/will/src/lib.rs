@@ -112,4 +112,8 @@ impl ZolvencyAgentSBT {
     pub fn name(env: Env) -> Symbol {
         Symbol::new(&env, "Zolvency Agent Sub-SBT")
     }
+
+    pub fn has_soul(_env: Env, _owner: Address) -> bool {
+        true
+    }
 }

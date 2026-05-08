@@ -29,7 +29,10 @@ echo "===================================================="
 echo "📦 Deploying contracts to Testnet..."
 
 SOUL_ID=$($STELLAR_CLI contract deploy --wasm "$WASM_DIR/zolvency_soul.wasm" --source "$SOURCE" --network "$NETWORK")
-echo "✅ Soul Token: $SOUL_ID"
+echo "✅ Soul ID: $SOUL_ID"
+
+WILL_ID=$($STELLAR_CLI contract deploy --wasm "$WASM_DIR/zolvency_will.wasm" --source "$SOURCE" --network "$NETWORK")
+echo "✅ Will Token (Agent SBT): $WILL_ID"
 
 NEXUS_ID=$($STELLAR_CLI contract deploy --wasm "$WASM_DIR/nexus.wasm" --source "$SOURCE" --network "$NETWORK")
 echo "✅ Nexus: $NEXUS_ID"
@@ -43,8 +46,12 @@ echo "⚙️  Initializing stack..."
 echo "   -> Soul..."
 $STELLAR_CLI contract invoke --id "$SOUL_ID" --source "$SOURCE" --network "$NETWORK" --send yes -- initialize --admin "$ADMIN_PUBLIC" --relayer "$ADMIN_PUBLIC"
 
+echo "   -> Will (Agent SBT)..."
+$STELLAR_CLI contract invoke --id "$WILL_ID" --source "$SOURCE" --network "$NETWORK" --send yes -- initialize --admin "$ADMIN_PUBLIC" --registry "$NEXUS_ID"
+
 echo "   -> Nexus..."
 $STELLAR_CLI contract invoke --id "$NEXUS_ID" --source "$SOURCE" --network "$NETWORK" --send yes -- initialize --admin "$ADMIN_PUBLIC" --signer "$ADMIN_PUBLIC"
+$STELLAR_CLI contract invoke --id "$NEXUS_ID" --source "$SOURCE" --network "$NETWORK" --send yes -- set_will_contract --admin "$ADMIN_PUBLIC" --will_contract "$WILL_ID"
 
 echo "   -> Z-Pay (with Escrow logic)..."
 $STELLAR_CLI contract invoke --id "$ZPAY_ID" --source "$SOURCE" --network "$NETWORK" --send yes -- \
@@ -52,11 +59,13 @@ $STELLAR_CLI contract invoke --id "$ZPAY_ID" --source "$SOURCE" --network "$NETW
     --admin "$ADMIN_PUBLIC" \
     --nexus_contract "$NEXUS_ID" \
     --oracle_pub_key 0000000000000000000000000000000000000000000000000000000000000000 \
-    --service_fee 1000000 \
-    --nexus_fee 500000 \
+    --stork_oracle "$ADMIN_PUBLIC" \
+    --service_fee_bps 100 \
+    --min_service_fee 1000000 \
+    --nexus_fee_bps 50 \
+    --min_nexus_fee 500000 \
     --zpay_treasury "$TREASURY_ADDRESS" \
-    --nexus_treasury "$TREASURY_ADDRESS" \
-    --stork_oracle "$ADMIN_PUBLIC"
+    --nexus_treasury "$TREASURY_ADDRESS"
 
 # Add Native XLM to allowlist
 TOKEN_ID="CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC"
@@ -79,6 +88,7 @@ update_env() {
 }
 
 update_env "SOUL_ID" "$SOUL_ID" ".env"
+update_env "WILL_ID" "$WILL_ID" ".env"
 update_env "NEXUS_ID" "$NEXUS_ID" ".env"
 update_env "ZPAY_ID" "$ZPAY_ID" ".env"
 
@@ -86,6 +96,7 @@ FRONTEND_ENV="../frontend/.env.local"
 if [ -f "$FRONTEND_ENV" ]; then
     echo "   -> Updating frontend/.env.local"
     update_env "NEXT_PUBLIC_SOUL_CONTRACT" "$SOUL_ID" "$FRONTEND_ENV"
+    update_env "NEXT_PUBLIC_WILL_CONTRACT" "$WILL_ID" "$FRONTEND_ENV"
     update_env "NEXT_PUBLIC_NEXUS_CONTRACT" "$NEXUS_ID" "$FRONTEND_ENV"
     update_env "NEXT_PUBLIC_ZPAY_CONTRACT" "$ZPAY_ID" "$FRONTEND_ENV"
 fi
