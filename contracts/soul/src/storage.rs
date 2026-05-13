@@ -1,5 +1,5 @@
 use soroban_sdk::{Env, Address, BytesN};
-use crate::types::{DataKey, SoulData, Error};
+use crate::{DataKey, SoulData, Error};
 
 const DAY_IN_LEDGERS: u32 = 17_280;
 const ONE_YEAR: u32 = 365 * DAY_IN_LEDGERS;
@@ -18,6 +18,14 @@ pub fn get_admin(env: &Env) -> Result<Address, Error> {
 
 pub fn get_relayer(env: &Env) -> Result<Address, Error> {
     env.storage().instance().get(&DataKey::Relayer).ok_or(Error::NotInitialized)
+}
+
+pub fn set_admin(env: &Env, admin: &Address) {
+    env.storage().instance().set(&DataKey::Admin, admin);
+}
+
+pub fn set_relayer(env: &Env, relayer: &Address) {
+    env.storage().instance().set(&DataKey::Relayer, relayer);
 }
 
 pub fn get_total_souls(env: &Env) -> u32 {

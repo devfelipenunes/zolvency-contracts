@@ -13,11 +13,6 @@ soroban-sdk = "25.3.1"
 
 [dev-dependencies]
 soroban-sdk = { version = "25.3.1", features = ["testutils"] }
-zolvency-github = { path = "../github", features = ["testutils"] }
-zolvency-flow = { path = "../flow", features = ["testutils"] }
-zolvency-stamp = { path = "../stamp", features = ["testutils"] }
-zolvency-gig = { path = "../gig", features = ["testutils"] }
-zolvency-will = { path = "../will", features = ["testutils"] }
 zolvency-soul = { path = "../soul", features = ["testutils"] }
 
 [features]

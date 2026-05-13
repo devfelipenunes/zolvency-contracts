@@ -1,9 +1,9 @@
 #![cfg(test)]
 
 use super::*;
-use crate::types::{MintParams, ReclaimProof, ClaimInfo};
+
 use soroban_sdk::{
-    testutils::Address as _, testutils::Ledger as _, Address, Bytes, Env, String, Symbol,
+    testutils::Address as _, testutils::Ledger as _, Address, Bytes, BytesN, Env, String, Symbol,
 };
 
 #[contract]
@@ -135,8 +135,10 @@ fn test_trait_implementation() {
     assert_eq!(ctx.client.get_token_type(), Symbol::new(&ctx.env, "github"));
     assert_eq!(
         ctx.client.get_source(),
-        String::from_str(&ctx.env, "zk-email")
+        String::from_str(&ctx.env, "github")
     );
+
+
 
     let md = ctx.client.get_metadata();
     assert_eq!(md.symbol, String::from_str(&ctx.env, "ZOLV-GH"));

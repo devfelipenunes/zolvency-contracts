@@ -1,0 +1,23 @@
+name: Aderyn Static Analysis
+
+on:
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  aderyn:
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Aderyn Static Analysis
+        uses: ./.github/actions/aderyn
+        with:
+          rust_toolchain: stable

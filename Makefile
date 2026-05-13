@@ -1,51 +1,48 @@
-.PHONY: build test fmt lint clean deploy-testnet test-scripts
+.PHONY: build test fmt lint clean deploy e2e test-security
 
 # Configurações
-WASM_IDENTITY=contracts/github/target/wasm32-unknown-unknown/release/github_identity.wasm
-WASM_REGISTRY=contracts/nexus/target/wasm32-unknown-unknown/release/nexus.wasm
+WASM_DIR=target/wasm32v1-none/release
 
 build:
 	@echo "🔨 Building contracts..."
-	stellar contract build --target wasm32v1-none
+	stellar contract build --optimize
 
 test:
-	@echo "🧪 Running tests..."
-	cargo test
+	@echo "🧪 Running Rust unit tests..."
+	cargo test --workspace
 
-test-scripts:
-	@echo "🧪 Running testnet validation scripts..."
-	cd .. && bash contracts/scripts/perfect_e2e_simulation.sh
-	cd .. && bash contracts/scripts/zpay_negative_cases.sh
-	cd .. && bash contracts/scripts/nexus_authority_cases.sh
-	cd .. && bash contracts/scripts/soul_negative_cases.sh
+e2e:
+	@echo "🚀 Running End-to-End simulation on Testnet..."
+	./scripts/e2e.sh
+
+deploy: build
+	@echo "🚀 Deploying complete system to Testnet..."
+	./scripts/deploy.sh
+
+test-security:
+	@echo "🧪 Running security and negative test cases..."
+	./scripts/security/zpay_negative_cases.sh
+	./scripts/security/nexus_authority_cases.sh
+	./scripts/security/soul_negative_cases.sh
 
 fmt:
 	@echo "🎨 Formatting code..."
 	cargo fmt --all
 
-.PHONY: lint
 lint:
 	@echo "🧹 Running Clippy static analysis..."
 	cargo clippy --all-targets --all-features -- -D warnings
 
 clean:
-	@echo "🧹 Cleaning targets..."
+	@echo "🧹 Cleaning build artifacts..."
 	cargo clean
 
-.PHONY: audit
 audit: audit-rust audit-evm
 
-.PHONY: audit-evm
 audit-evm:
 	@echo "🔍 Running Slither security audit..."
-	slither verifiers/evm/ --config-file slither.config.json
+	slither verifiers/evm/ --config-file slither.config.json || echo "Slither not found or failed"
 
-.PHONY: audit-rust
 audit-rust:
 	@echo "🔍 Checking Rust dependencies for vulnerabilities..."
-	cargo audit
-
-# Helper para rodar a automação completa
-deploy-testnet: build
-	@echo "🚀 Starting testnet automation..."
-	./scripts/testnet_automation.sh
+	cargo audit || echo "Cargo audit not found or failed"

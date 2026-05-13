@@ -1,8 +1,6 @@
 use soroban_sdk::{Address, Env, Symbol};
 
-use crate::types::{
-    Config, DataKey, Error, GithubData,
-};
+use crate::{Config, DataKey, Error, GithubData};
 
 #[allow(dead_code)]
 const KEY_CONFIG: &str = "CONFIG";

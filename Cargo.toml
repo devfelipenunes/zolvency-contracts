@@ -2,18 +2,13 @@
 resolver = "2"
 
 members = [
-    "contracts/github",
-    "contracts/flow",
-    "contracts/stamp",
-    "contracts/gig",
     "contracts/nexus",
     "contracts/soul",
     "contracts/zpay",
     "contracts/adapters/axelar",
-    "contracts/adapters/authority-pull",
-    "contracts/will",
-    "contracts/mock_gateway",
-    "verifiers/cosmos",
+    "contracts/github",
+    "contracts/gig",
+    "contracts/flow",
 ]
 
 [profile.release]

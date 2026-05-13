@@ -1,6 +1,6 @@
 #![cfg(test)]
 use super::*;
-use soroban_sdk::{Address, testutils::Address as _, testutils::Ledger as _, Env, token::Client as TokenClient};
+use soroban_sdk::{Address, testutils::Address as _, testutils::Ledger as _, Env, token::Client as TokenClient, xdr::ToXdr};
 
 fn init_client(env: &Env) -> (ZPayContractClient, Address, Address, Address, Address) {
     let contract_id = env.register(ZPayContract, ());
@@ -28,8 +28,8 @@ fn init_client(env: &Env) -> (ZPayContractClient, Address, Address, Address, Add
 }
 #[contract] pub struct MockStork;
 #[contractimpl] impl MockStork {
-    pub fn get_temporal_numeric_value_v1(env: Env, _asset_id: BytesN<32>) -> stork_interface::TemporalNumericValue {
-        stork_interface::TemporalNumericValue { quantized_value: 10_000_000, timestamp: env.ledger().timestamp(), publisher_merkle_root: BytesN::from_array(&env, &[0; 32]) }
+    pub fn get_temporal_numeric_value_v1(env: Env, _asset_id: BytesN<32>) -> crate::interfaces::TemporalNumericValue {
+        crate::interfaces::TemporalNumericValue { quantized_value: 10_000_000, timestamp: env.ledger().timestamp(), publisher_merkle_root: BytesN::from_array(&env, &[0; 32]) }
     }
 }
 #[contract] pub struct MockFallbackOracle;
