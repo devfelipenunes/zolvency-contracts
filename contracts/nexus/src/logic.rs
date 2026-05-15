@@ -43,6 +43,13 @@ pub fn issue_mandate(env: &Env, request: IssueMandateRequest) -> Result<u64, Man
             }
         }
 
+        // D. Verificar Consistência de Token
+        if let (Some(child_token), Some(parent_token)) = (request.scope.token.clone(), parent.scope.token.clone()) {
+            if child_token != parent_token {
+                return Err(MandateError::PolicyViolation);
+            }
+        }
+
         // C. Verificar Regras de Delegação
         match parent.delegation_policy {
             DelegationPolicy::None => return Err(MandateError::PolicyViolation),
@@ -143,6 +150,61 @@ pub fn issue_mandate(env: &Env, request: IssueMandateRequest) -> Result<u64, Man
     Ok(id)
 }
 
+pub fn issue_mandate_as_admin(
+    env: &Env,
+    root_anchor: Address,
+    agent: Address,
+    scope: Scope,
+    delegation_policy: DelegationPolicy,
+    parent_mandate_id: Option<u64>,
+) -> Result<u64, MandateError> {
+    // 1. Apenas o Admin pode chamar esta função
+    let admin = storage::get_admin(env)?;
+    admin.require_auth();
+
+    // 2. Verificar se o root_anchor tem SoulID
+    let soul_id_contract = env.storage().persistent().get(&DataKey::SoulContract).ok_or(MandateError::NotInitialized)?;
+    let has_soul: bool = env.invoke_contract(
+        &soul_id_contract,
+        &soroban_sdk::Symbol::new(env, "has_soul"),
+        (root_anchor.clone(),).into_val(env),
+    );
+    if !has_soul {
+        return Err(MandateError::SoulIDRequired);
+    }
+
+    let id = storage::increment_next_mandate_id(env);
+    let current_epoch = storage::get_global_epoch(env, &root_anchor);
+
+    let mandate = Mandate {
+        id,
+        root_anchor: root_anchor.clone(),
+        issuer: admin.clone(), // Admin é o emissor
+        agent: agent.clone(),
+        scope,
+        issued_at_epoch: current_epoch,
+        delegation_policy,
+        parent_mandate_id,
+        depth: 0,
+    };
+
+    let state = MandateState {
+        mandate_id: id,
+        spent_budget: 0,
+        current_period_start: env.ledger().timestamp(),
+        allocated_to_children: 0,
+        is_revoked: false,
+    };
+
+    storage::set_mandate(env, id, &mandate);
+    storage::set_mandate_state(env, id, &state);
+    env.storage().persistent().set(&DataKey::AgentMandate(agent.clone()), &id);
+
+    env.events().publish((symbol_short!("issued"), id), agent);
+
+    Ok(id)
+}
+
 pub fn revoke_mandate(env: &Env, revoker: Address, mandate_id: u64) -> Result<(), MandateError> {
     revoker.require_auth();
     let mandate = storage::get_mandate(env, mandate_id).ok_or(MandateError::MandateNotFound)?;
@@ -214,6 +276,7 @@ pub fn verify_authority(
     contract: Address,
     function: Symbol,
     amount: Option<i128>,
+    token: Option<Address>,
 ) -> bool {
     let mandate = match storage::get_mandate(env, mandate_id) {
         Some(m) => m,
@@ -226,6 +289,13 @@ pub fn verify_authority(
 
     if env.ledger().timestamp() > mandate.scope.expiration {
         return false;
+    }
+
+    // 1. Verificar Token
+    if let (Some(scope_token), Some(provided_token)) = (mandate.scope.token.clone(), token) {
+        if scope_token != provided_token {
+            return false;
+        }
     }
 
     let current_epoch = storage::get_global_epoch(env, &mandate.root_anchor);
@@ -250,6 +320,62 @@ pub fn verify_authority(
     if let Some(transfer_amount) = amount {
         if !check_and_update_budget(env, mandate_id, transfer_amount) {
             return false;
+        }
+    }
+
+    true
+}
+
+/// Versão read-only (não altera storage)
+pub fn check_authority(
+    env: &Env,
+    mandate_id: u64,
+    agent: Address,
+    contract: Address,
+    function: Symbol,
+    amount: Option<i128>,
+    token: Option<Address>,
+) -> bool {
+    let mandate = match storage::get_mandate(env, mandate_id) {
+        Some(m) => m,
+        None => return false,
+    };
+
+    if mandate.agent != agent || env.ledger().timestamp() > mandate.scope.expiration {
+        return false;
+    }
+
+    if let (Some(scope_token), Some(provided_token)) = (mandate.scope.token.clone(), token) {
+        if scope_token != provided_token {
+            return false;
+        }
+    }
+
+    if mandate.issued_at_epoch != storage::get_global_epoch(env, &mandate.root_anchor) {
+        return false;
+    }
+
+    if !check_revocation_recursive(env, mandate_id) {
+        return false;
+    }
+
+    if !traverse_and_verify(env, mandate_id, &contract, &function) {
+        return false;
+    }
+
+    if let Some(transfer_amount) = amount {
+        let state = storage::get_mandate_state(env, mandate_id).unwrap();
+        let mut current_spent = state.spent_budget;
+        let now = env.ledger().timestamp();
+        if let Some(period) = mandate.scope.renewal_period {
+            if now >= state.current_period_start + period {
+                current_spent = 0;
+            }
+        }
+        if let Some(limit) = mandate.scope.transfer_limit {
+            if current_spent + transfer_amount > limit {
+                return false;
+            }
         }
     }
 
@@ -305,6 +431,7 @@ fn check_and_update_budget(env: &Env, mandate_id: u64, amount: i128) -> bool {
             if now >= state.current_period_start + period {
                 state.spent_budget = 0;
                 state.current_period_start = now;
+                env.events().publish((symbol_short!("budget"), symbol_short!("reset"), mandate_id), now);
             }
         }
 

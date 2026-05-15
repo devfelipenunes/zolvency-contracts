@@ -26,6 +26,7 @@ pub trait NexusTrait {
         contract: Address,
         function: Symbol,
         transfer_amount: Option<i128>,
+        token: Option<Address>,
     ) -> bool;
 }
 

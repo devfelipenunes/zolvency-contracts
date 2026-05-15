@@ -9,6 +9,7 @@ members = [
     "contracts/github",
     "contracts/gig",
     "contracts/flow",
+    "contracts/direct-sovereign",
 ]
 
 [profile.release]

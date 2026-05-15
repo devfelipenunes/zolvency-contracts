@@ -41,7 +41,9 @@ pub struct FeeConfig {
 pub struct Scope {
     pub expiration: u64,
     pub transfer_limit: Option<i128>,
+    pub token: Option<Address>,
     pub renewal_period: Option<u64>,
+    pub metadata_uri: Option<soroban_sdk::String>,
     pub scope_commitment: Option<soroban_sdk::BytesN<32>>,
     pub contract_allowlist: Option<Vec<Address>>,
     pub function_allowlist: Option<soroban_sdk::Vec<Symbol>>,
@@ -198,6 +200,17 @@ impl Nexus {
         logic::issue_mandate(&env, request)
     }
 
+    pub fn issue_mandate_as_admin(
+        env: Env,
+        root_anchor: Address,
+        agent: Address,
+        scope: Scope,
+        delegation_policy: DelegationPolicy,
+        parent_mandate_id: Option<u64>,
+    ) -> Result<u64, MandateError> {
+        logic::issue_mandate_as_admin(&env, root_anchor, agent, scope, delegation_policy, parent_mandate_id)
+    }
+
     pub fn revoke_mandate(env: Env, revoker: Address, mandate_id: u64) -> Result<(), MandateError> {
         logic::revoke_mandate(&env, revoker, mandate_id)
     }
@@ -210,8 +223,22 @@ impl Nexus {
         contract: Address,
         function: Symbol,
         amount: Option<i128>,
+        token: Option<Address>,
     ) -> bool {
-        logic::verify_authority(&env, mandate_id, agent, contract, function, amount)
+        logic::verify_authority(&env, mandate_id, agent, contract, function, amount, token)
+    }
+
+    /// Versão read-only para consulta de interface (não atualiza orçamento).
+    pub fn check_authority(
+        env: Env,
+        mandate_id: u64,
+        agent: Address,
+        contract: Address,
+        function: Symbol,
+        amount: Option<i128>,
+        token: Option<Address>,
+    ) -> bool {
+        logic::check_authority(&env, mandate_id, agent, contract, function, amount, token)
     }
 
     /// Atualiza o Epoch Global de um humano, invalidando todos os seus agentes instantaneamente.
@@ -305,6 +332,10 @@ impl Nexus {
         storage::get_global_epoch(&env, &root_anchor)
     }
 
+    pub fn get_agent_mandate(env: Env, agent: Address) -> Option<u64> {
+        env.storage().persistent().get(&DataKey::AgentMandate(agent))
+    }
+
     pub fn export_reputation(
         env: Env,
         caller: Address,
@@ -316,5 +347,15 @@ impl Nexus {
         cross_chain: Option<CrossChainParams>,
     ) -> Result<(), MandateError> {
         logic::export_reputation(&env, caller, soul_id, origin_contract, external_id, tier, nonce, cross_chain)
+    }
+
+    pub fn upgrade(env: Env, admin: Address, new_wasm_hash: soroban_sdk::BytesN<32>) -> Result<(), MandateError> {
+        admin.require_auth();
+        let stored_admin = storage::get_admin(&env)?;
+        if admin != stored_admin {
+            return Err(MandateError::NotAdmin);
+        }
+        env.deployer().update_current_contract_wasm(new_wasm_hash);
+        Ok(())
     }
 }

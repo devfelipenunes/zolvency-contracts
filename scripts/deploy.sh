@@ -47,6 +47,9 @@ echo "✅ Axelar Adapter ID: $ADAPTER_ID"
 ZPAY_ID=$($STELLAR_CLI contract deploy --wasm "$WASM_DIR/zpay.wasm" --source "$SOURCE" --network "$NETWORK")
 echo "✅ ZPay ID: $ZPAY_ID"
 
+DS_ID=$($STELLAR_CLI contract deploy --wasm "$WASM_DIR/direct_sovereign.wasm" --source "$SOURCE" --network "$NETWORK")
+echo "✅ Direct Sovereign ID: $DS_ID"
+
 # 3. INITIALIZE CONTRACTS
 echo "⚙️  Initializing system..."
 
@@ -95,6 +98,11 @@ $STELLAR_CLI contract invoke --id "$ZPAY_ID" --source "$SOURCE" --network "$NETW
     --zpay_treasury "$TREASURY_ADDRESS" \
     --nexus_treasury "$TREASURY_ADDRESS"
 
+echo "   -> Direct Sovereign..."
+$STELLAR_CLI contract invoke --id "$DS_ID" --source "$SOURCE" --network "$NETWORK" -- initialize \
+    --admin "$ADMIN_PUBLIC" \
+    --nexus "$NEXUS_ID"
+
 # 4. CROSS-LINKING & REGISTRATION
 echo "🔗 Cross-linking components..."
 
@@ -103,35 +111,21 @@ $STELLAR_CLI contract invoke --id "$NEXUS_ID" --source "$SOURCE" --network "$NET
 $STELLAR_CLI contract invoke --id "$NEXUS_ID" --source "$SOURCE" --network "$NETWORK" -- register_token --admin "$ADMIN_PUBLIC" --token_contract "$GIG_ID"
 $STELLAR_CLI contract invoke --id "$NEXUS_ID" --source "$SOURCE" --network "$NETWORK" -- register_token --admin "$ADMIN_PUBLIC" --token_contract "$FLOW_ID"
 
-# 5. PERSIST DATA
-echo "💾 Updating .env..."
+# 5. PERSIST DATA & SYNC
+echo "💾 Synchronizing all system components..."
 
-update_env() {
-    local key=$1
-    local value=$2
-    local file=$3
-    if grep -q "^$key=" "$file"; then
-        sed -i "s|^$key=.*|$key=$value|" "$file"
-    else
-        echo "$key=$value" >> "$file"
-    fi
-}
+# Ensure sync script is executable
+chmod +x scripts/sync_registry.sh
 
-update_env "NEXUS_ID" "$NEXUS_ID" ".env"
-update_env "SOUL_ID" "$SOUL_ID" ".env"
-update_env "GITHUB_ID" "$GITHUB_ID" ".env"
-update_env "GIG_ID" "$GIG_ID" ".env"
-update_env "FLOW_ID" "$FLOW_ID" ".env"
-update_env "AXELAR_ADAPTER_ID" "$ADAPTER_ID" ".env"
-update_env "ZPAY_ID" "$ZPAY_ID" ".env"
+# Call the sync script with the new IDs
+# Note: NEXUS_ID, SOUL_ID, etc. are already set in this script's scope
+export NEXUS_ID SOUL_ID ZPAY_ID GITHUB_ID GIG_ID FLOW_ID ADAPTER_ID DS_ID
+./scripts/sync_registry.sh
 
 echo "===================================================="
 echo "   DEPLOYMENT SUCCESSFUL! SYSTEM LIVE ON TESTNET     "
 echo "===================================================="
+echo "Registry: contracts/registry.json"
 echo "Nexus: $NEXUS_ID"
 echo "Soul: $SOUL_ID"
-echo "Github: $GITHUB_ID"
-echo "Gig: $GIG_ID"
-echo "Flow: $FLOW_ID"
-echo "Adapter: $ADAPTER_ID"
 echo "ZPay: $ZPAY_ID"

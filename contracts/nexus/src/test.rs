@@ -57,8 +57,6 @@ fn is_issue_mandate_error(
     }
 }
 
-// use zolvency_github::{GithubIdentityContract, GithubIdentityContractClient};
-
 #[contract]
 pub struct MockSoul;
 
@@ -124,20 +122,10 @@ impl MockAdapter {
     }
 }
 
-/*
-#[test]
-fn test_complete_will_lifecycle_interactions() {
-...
-    let res = will_client.try_get_auth(&will_x);
-    assert!(res.is_err());
-}
-*/
-
 #[test]
 fn test_will_auth_expiry() {
     let env = Env::default();
     env.mock_all_auths();
-    let fixed_expiration = env.ledger().timestamp() + 3600;
 
     let registry_id = env.register(Nexus, ());
     let registry_client = NexusClient::new(&env, &registry_id);
@@ -160,7 +148,9 @@ fn test_will_auth_expiry() {
         &Scope {
             expiration: env.ledger().timestamp() + duration,
             transfer_limit: None,
+            token: None,
             renewal_period: None,
+            metadata_uri: None,
             scope_commitment: None,
             contract_allowlist: None,
             function_allowlist: None,
@@ -191,7 +181,7 @@ fn test_will_auth_expiry() {
     env.ledger().set_timestamp(5000);
     
     // Verify authority fails after expiry
-    let res = registry_client.verify_authority(&mandate_id, &will, &Address::generate(&env), &Symbol::new(&env, "any"), &None);
+    let res = registry_client.verify_authority(&mandate_id, &will, &Address::generate(&env), &Symbol::new(&env, "any"), &None, &None);
     assert!(!res);
 }
 
@@ -214,8 +204,8 @@ fn test_will_permission_masking() {
     let will_read = Address::generate(&env);
     let will_write = Address::generate(&env);
 
-    issue_mandate_wrapper(&env, &registry_client, &user, &will_read, &Scope { expiration: fixed_expiration, transfer_limit: None, renewal_period: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None }, &DelegationPolicy::None, &None);
-    issue_mandate_wrapper(&env, &registry_client, &user, &will_write, &Scope { expiration: fixed_expiration, transfer_limit: None, renewal_period: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None }, &DelegationPolicy::None, &None);
+    issue_mandate_wrapper(&env, &registry_client, &user, &will_read, &Scope { expiration: fixed_expiration, transfer_limit: None, token: None, renewal_period: None, metadata_uri: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None }, &DelegationPolicy::None, &None);
+    issue_mandate_wrapper(&env, &registry_client, &user, &will_write, &Scope { expiration: fixed_expiration, transfer_limit: None, token: None, renewal_period: None, metadata_uri: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None }, &DelegationPolicy::None, &None);
 }
 
 #[test]
@@ -241,7 +231,7 @@ fn test_delegation_chain_and_revocation() {
     let mandate_b_id = issue_mandate_wrapper(&env, &registry_client, 
         &user_a,
         &agent_b,
-        &Scope { expiration: fixed_expiration, transfer_limit: None, renewal_period: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
+        &Scope { expiration: fixed_expiration, transfer_limit: None, token: None, renewal_period: None, metadata_uri: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
         &DelegationPolicy::Full,
         &None,
     );
@@ -250,20 +240,20 @@ fn test_delegation_chain_and_revocation() {
     let mandate_c_id = issue_mandate_wrapper(&env, &registry_client, 
         &user_a,
         &agent_c,
-        &Scope { expiration: env.ledger().timestamp() + 1800, transfer_limit: None, renewal_period: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
+        &Scope { expiration: env.ledger().timestamp() + 1800, transfer_limit: None, token: None, renewal_period: None, metadata_uri: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
         &DelegationPolicy::None,
         &Some(mandate_b_id),
     );
 
 
-    let auth_c = registry_client.verify_authority(&mandate_c_id, &agent_c, &Address::generate(&env), &Symbol::new(&env, "any"), &None);
+    let auth_c = registry_client.verify_authority(&mandate_c_id, &agent_c, &Address::generate(&env), &Symbol::new(&env, "any"), &None, &None);
     assert!(auth_c);
 
 
     registry_client.revoke_mandate(&user_a, &mandate_b_id);
 
 
-    let auth_c_post = registry_client.verify_authority(&mandate_c_id, &agent_c, &Address::generate(&env), &Symbol::new(&env, "any"), &None);
+    let auth_c_post = registry_client.verify_authority(&mandate_c_id, &agent_c, &Address::generate(&env), &Symbol::new(&env, "any"), &None, &None);
     assert!(!auth_c_post);
 }
 
@@ -296,7 +286,9 @@ fn test_pro_deep_inheritance_verification() {
             &Scope { 
                 expiration: fixed_expiration, 
                 transfer_limit: Some(1000), 
+                token: None,
                 renewal_period: None, 
+                metadata_uri: None,
                 scope_commitment: None, 
                 contract_allowlist: None, 
                 function_allowlist: None 
@@ -312,13 +304,13 @@ fn test_pro_deep_inheritance_verification() {
     let leaf_agent = current_issuer;
 
     // Verify authority at depth 8
-    assert!(nexus_client.verify_authority(&leaf_mandate, &leaf_agent, &Address::generate(&env), &Symbol::new(&env, "any"), &Some(100)));
+    assert!(nexus_client.verify_authority(&leaf_mandate, &leaf_agent, &Address::generate(&env), &Symbol::new(&env, "any"), &Some(100), &None));
 
     // Verify another spend to ensure budget propagates correctly up to root
-    assert!(nexus_client.verify_authority(&leaf_mandate, &leaf_agent, &Address::generate(&env), &Symbol::new(&env, "any"), &Some(900)));
+    assert!(nexus_client.verify_authority(&leaf_mandate, &leaf_agent, &Address::generate(&env), &Symbol::new(&env, "any"), &Some(900), &None));
 
     // Exceed budget at depth 8
-    assert!(!nexus_client.verify_authority(&leaf_mandate, &leaf_agent, &Address::generate(&env), &Symbol::new(&env, "any"), &Some(1)));
+    assert!(!nexus_client.verify_authority(&leaf_mandate, &leaf_agent, &Address::generate(&env), &Symbol::new(&env, "any"), &Some(1), &None));
 }
 
 #[test]
@@ -343,18 +335,18 @@ fn test_increment_epoch_impact() {
     let mandate_id = issue_mandate_wrapper(&env, &nexus_client, 
         &root_anchor,
         &agent,
-        &Scope { expiration: fixed_expiration, transfer_limit: None, renewal_period: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
+        &Scope { expiration: fixed_expiration, transfer_limit: None, token: None, renewal_period: None, metadata_uri: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
         &DelegationPolicy::None,
         &None,
     );
     
-    assert!(nexus_client.verify_authority(&mandate_id, &agent, &Address::generate(&env), &Symbol::new(&env, "any"), &None));
+    assert!(nexus_client.verify_authority(&mandate_id, &agent, &Address::generate(&env), &Symbol::new(&env, "any"), &None, &None));
     
     // Increment epoch
     nexus_client.set_global_epoch(&root_anchor, &1);
     
     // Mandate should now be invalid
-    assert!(!nexus_client.verify_authority(&mandate_id, &agent, &Address::generate(&env), &Symbol::new(&env, "any"), &None));
+    assert!(!nexus_client.verify_authority(&mandate_id, &agent, &Address::generate(&env), &Symbol::new(&env, "any"), &None, &None));
 }
 
 #[test]
@@ -385,7 +377,9 @@ fn test_verify_authority_allowlists() {
         &Scope {
             expiration: fixed_expiration,
             transfer_limit: None,
+            token: None,
             renewal_period: None,
+            metadata_uri: None,
             scope_commitment: None,
             contract_allowlist: Some(soroban_sdk::vec![&env, allowed_contract.clone()]),
             function_allowlist: Some(soroban_sdk::vec![&env, allowed_fn.clone()]),
@@ -400,7 +394,9 @@ fn test_verify_authority_allowlists() {
         &Scope {
             expiration: fixed_expiration,
             transfer_limit: None,
+            token: None,
             renewal_period: None,
+            metadata_uri: None,
             scope_commitment: None,
             contract_allowlist: Some(soroban_sdk::vec![&env, allowed_contract.clone()]),
             function_allowlist: Some(soroban_sdk::vec![&env, allowed_fn.clone()]),
@@ -415,7 +411,9 @@ fn test_verify_authority_allowlists() {
         &Scope {
             expiration: fixed_expiration,
             transfer_limit: None,
+            token: None,
             renewal_period: None,
+            metadata_uri: None,
             scope_commitment: None,
             contract_allowlist: Some(soroban_sdk::vec![&env, allowed_contract.clone()]),
             function_allowlist: Some(soroban_sdk::vec![&env, allowed_fn.clone()]),
@@ -424,9 +422,9 @@ fn test_verify_authority_allowlists() {
         &None,
     );
 
-    assert!(nexus_client.verify_authority(&allowed_id, &agent, &allowed_contract, &allowed_fn, &None));
-    assert!(!nexus_client.verify_authority(&denied_contract_id, &agent, &denied_contract, &allowed_fn, &None));
-    assert!(!nexus_client.verify_authority(&denied_function_id, &agent, &allowed_contract, &denied_fn, &None));
+    assert!(nexus_client.verify_authority(&allowed_id, &agent, &allowed_contract, &allowed_fn, &None, &None));
+    assert!(!nexus_client.verify_authority(&denied_contract_id, &agent, &denied_contract, &allowed_fn, &None, &None));
+    assert!(!nexus_client.verify_authority(&denied_function_id, &agent, &allowed_contract, &denied_fn, &None, &None));
 }
 
 #[test]
@@ -451,7 +449,7 @@ fn test_budget_fraction_enforcement() {
     let mandate_b_id = issue_mandate_wrapper(&env, &nexus_client, 
         &user,
         &agent_b,
-        &Scope { expiration: fixed_expiration, transfer_limit: Some(1000), renewal_period: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
+        &Scope { expiration: fixed_expiration, transfer_limit: Some(1000), token: None, renewal_period: None, metadata_uri: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
         &DelegationPolicy::Restricted(DelegationRules {
             max_subdepth: 2,
             allowed_scope_tags: None,
@@ -462,9 +460,9 @@ fn test_budget_fraction_enforcement() {
     
     // 50% of 1000 is 500. Try to issue 600.
     assert!(is_issue_mandate_error(&env, &nexus_client, 
-        &user, // Corrected from agent_b
+        &user, 
         &agent_c,
-        &Scope { expiration: fixed_expiration, transfer_limit: Some(600), renewal_period: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
+        &Scope { expiration: fixed_expiration, transfer_limit: Some(600), token: None, renewal_period: None, metadata_uri: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
         &DelegationPolicy::None,
         &Some(mandate_b_id),
     ));
@@ -473,7 +471,7 @@ fn test_budget_fraction_enforcement() {
     issue_mandate_wrapper(&env, &nexus_client, 
         &user,
         &agent_c,
-        &Scope { expiration: fixed_expiration, transfer_limit: Some(500), renewal_period: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
+        &Scope { expiration: fixed_expiration, transfer_limit: Some(500), token: None, renewal_period: None, metadata_uri: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
         &DelegationPolicy::None,
         &Some(mandate_b_id),
     );
@@ -503,7 +501,7 @@ fn test_sum_child_budget_enforcement() {
     let mandate_b_id = issue_mandate_wrapper(&env, &nexus_client, 
         &user,
         &agent_b,
-        &Scope { expiration: fixed_expiration, transfer_limit: Some(1000), renewal_period: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
+        &Scope { expiration: fixed_expiration, transfer_limit: Some(1000), token: None, renewal_period: None, metadata_uri: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
         &DelegationPolicy::Full,
         &None,
     );
@@ -512,16 +510,16 @@ fn test_sum_child_budget_enforcement() {
     issue_mandate_wrapper(&env, &nexus_client, 
         &user,
         &agent_c1,
-        &Scope { expiration: fixed_expiration, transfer_limit: Some(600), renewal_period: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
+        &Scope { expiration: fixed_expiration, transfer_limit: Some(600), token: None, renewal_period: None, metadata_uri: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
         &DelegationPolicy::None,
         &Some(mandate_b_id),
     );
     
     // Try to issue another 600 to C2. Sum (1200) > Parent (1000).
     assert!(is_issue_mandate_error(&env, &nexus_client, 
-        &user, // Corrected from agent_b
+        &user, 
         &agent_c2,
-        &Scope { expiration: fixed_expiration, transfer_limit: Some(600), renewal_period: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
+        &Scope { expiration: fixed_expiration, transfer_limit: Some(600), token: None, renewal_period: None, metadata_uri: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
         &DelegationPolicy::None,
         &Some(mandate_b_id),
     ));
@@ -551,7 +549,9 @@ fn test_remote_mandate_issuance() {
         scope: Scope {
             expiration: fixed_expiration,
             transfer_limit: Some(1000),
+            token: None,
             renewal_period: None,
+            metadata_uri: None,
             scope_commitment: None,
             contract_allowlist: None,
             function_allowlist: None,
@@ -578,10 +578,10 @@ fn test_remote_mandate_issuance() {
     
     let res_epoch = nexus_client.try_issue_mandate(&request_wrong_epoch);
     assert!(res_epoch.is_err());
-    }
+}
 
-    #[test]
-    fn test_scope_tag_restrictions() {
+#[test]
+fn test_scope_tag_restrictions() {
     let env = Env::default();
     env.mock_all_auths();
     let fixed_expiration = env.ledger().timestamp() + 3600;
@@ -603,7 +603,7 @@ fn test_remote_mandate_issuance() {
     let mandate_b_id = issue_mandate_wrapper(&env, &nexus_client, 
         &user,
         &agent_b,
-        &Scope { expiration: fixed_expiration, transfer_limit: Some(1000), renewal_period: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
+        &Scope { expiration: fixed_expiration, transfer_limit: Some(1000), token: None, renewal_period: None, metadata_uri: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
         &DelegationPolicy::Restricted(DelegationRules {
             max_subdepth: 2,
             allowed_scope_tags: Some(soroban_sdk::vec![&env, ScopeTag::TransferLimit]),
@@ -614,12 +614,14 @@ fn test_remote_mandate_issuance() {
 
     // Try to issue a mandate with contract_allowlist (violates allowed_scope_tags)
     assert!(is_issue_mandate_error(&env, &nexus_client, 
-        &user, // Corrected from agent_b
+        &user, 
         &agent_c,
         &Scope { 
             expiration: fixed_expiration, 
             transfer_limit: Some(500), 
-            renewal_period: None,
+            token: None,
+            renewal_period: None, 
+            metadata_uri: None,
             scope_commitment: None, 
             contract_allowlist: Some(soroban_sdk::vec![&env, Address::generate(&env)]), 
             function_allowlist: None 
@@ -627,10 +629,10 @@ fn test_remote_mandate_issuance() {
         &DelegationPolicy::None,
         &Some(mandate_b_id),
     ));
-    }
+}
 
-    #[test]
-    fn test_max_delegation_depth() {
+#[test]
+fn test_max_delegation_depth() {
     let env = Env::default();
     env.mock_all_auths();
     let fixed_expiration = env.ledger().timestamp() + 3600;
@@ -655,7 +657,7 @@ fn test_remote_mandate_issuance() {
         let mid = issue_mandate_wrapper(&env, &nexus_client, 
             &root,
             &agent,
-            &Scope { expiration: fixed_expiration, transfer_limit: None, renewal_period: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
+            &Scope { expiration: fixed_expiration, transfer_limit: None, token: None, renewal_period: None, metadata_uri: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
             &DelegationPolicy::Full,
             &last_mandate_id,
         );
@@ -663,24 +665,11 @@ fn test_remote_mandate_issuance() {
         last_mandate_id = Some(mid);
     }
 
-    // Now depth is 8 (Root Anchor is 0, so the 8th mandate is at depth 7).
-    // Wait, let's check internal logic: Root anchor is 0, first mandate is depth 0?
-    // In lib.rs: depth = parent.depth + 1; Root Anchor = depth 0.
-    // So:
-    // M1: issuer=Root, parent=None, depth=0
-    // M2: issuer=M1.agent, parent=M1, depth=1
-    // ...
-    // M8: depth=7.
-    // M9: depth=8.
-
-    // Try to issue the 9th mandate (depth 8) - this should fail if MAX_DELEGATION_DEPTH is 8?
-    // No, MAX_DELEGATION_DEPTH is 8. So depth 8 is allowed, depth 9 is not.
-
     let agent_9 = Address::generate(&env);
     let mid_9 = issue_mandate_wrapper(&env, &nexus_client, 
         &root,
         &agent_9,
-        &Scope { expiration: fixed_expiration, transfer_limit: None, renewal_period: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
+        &Scope { expiration: fixed_expiration, transfer_limit: None, token: None, renewal_period: None, metadata_uri: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
         &DelegationPolicy::Full,
         &last_mandate_id,
     );
@@ -689,14 +678,14 @@ fn test_remote_mandate_issuance() {
     assert!(is_issue_mandate_error(&env, &nexus_client, 
         &root,
         &Address::generate(&env),
-        &Scope { expiration: fixed_expiration, transfer_limit: None, renewal_period: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
+        &Scope { expiration: fixed_expiration, transfer_limit: None, token: None, renewal_period: None, metadata_uri: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
         &DelegationPolicy::Full,
         &Some(mid_9),
     ));
-    }
+}
 
-    #[test]
-    fn test_verification_cache_hit() {
+#[test]
+fn test_verification_cache_hit() {
     let env = Env::default();
     env.mock_all_auths();
     let fixed_expiration = env.ledger().timestamp() + 3600;
@@ -716,24 +705,24 @@ fn test_remote_mandate_issuance() {
     let mandate_id = issue_mandate_wrapper(&env, &nexus_client, 
         &user,
         &agent,
-        &Scope { expiration: fixed_expiration, transfer_limit: Some(1000), renewal_period: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
+        &Scope { expiration: fixed_expiration, transfer_limit: Some(1000), token: None, renewal_period: None, metadata_uri: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
         &DelegationPolicy::None,
         &None,
     );
 
     // First verification (Cache miss)
-    assert!(nexus_client.verify_authority(&mandate_id, &agent, &Address::generate(&env), &Symbol::new(&env, "any"), &Some(100)));
+    assert!(nexus_client.verify_authority(&mandate_id, &agent, &Address::generate(&env), &Symbol::new(&env, "any"), &Some(100), &None));
 
     // Second verification (Cache hit)
-    assert!(nexus_client.verify_authority(&mandate_id, &agent, &Address::generate(&env), &Symbol::new(&env, "any"), &Some(100)));
+    assert!(nexus_client.verify_authority(&mandate_id, &agent, &Address::generate(&env), &Symbol::new(&env, "any"), &Some(100), &None));
 
     // Verify budget was updated twice
-    let state = nexus_client.verify_authority(&mandate_id, &agent, &Address::generate(&env), &Symbol::new(&env, "any"), &Some(801));
+    let state = nexus_client.verify_authority(&mandate_id, &agent, &Address::generate(&env), &Symbol::new(&env, "any"), &Some(801), &None);
     assert!(!state); // Should fail because 100+100+801 > 1000
-    }
+}
 
-    #[test]
-    fn test_verification_cache_invalidation_on_epoch() {
+#[test]
+fn test_verification_cache_invalidation_on_epoch() {
     let env = Env::default();
     env.mock_all_auths();
     let fixed_expiration = env.ledger().timestamp() + 3600;
@@ -753,23 +742,23 @@ fn test_remote_mandate_issuance() {
     let mandate_id = issue_mandate_wrapper(&env, &nexus_client, 
         &user,
         &agent,
-        &Scope { expiration: fixed_expiration, transfer_limit: None, renewal_period: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
+        &Scope { expiration: fixed_expiration, transfer_limit: None, token: None, renewal_period: None, metadata_uri: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
         &DelegationPolicy::None,
         &None,
     );
 
     // Verify to populate cache
-    assert!(nexus_client.verify_authority(&mandate_id, &agent, &Address::generate(&env), &Symbol::new(&env, "any"), &None));
+    assert!(nexus_client.verify_authority(&mandate_id, &agent, &Address::generate(&env), &Symbol::new(&env, "any"), &None, &None));
 
     // Increment epoch
     nexus_client.set_global_epoch(&user, &1);
 
     // Verify again - should be invalid even if cache exists for old epoch
-    assert!(!nexus_client.verify_authority(&mandate_id, &agent, &Address::generate(&env), &Symbol::new(&env, "any"), &None));
-    }
+    assert!(!nexus_client.verify_authority(&mandate_id, &agent, &Address::generate(&env), &Symbol::new(&env, "any"), &None, &None));
+}
 
-    #[test]
-    fn test_cascading_revocation_deep() {
+#[test]
+fn test_cascading_revocation_deep() {
     let env = Env::default();
     env.mock_all_auths();
     let fixed_expiration = env.ledger().timestamp() + 3600;
@@ -788,24 +777,23 @@ fn test_remote_mandate_issuance() {
     let agent_2 = Address::generate(&env);
     let agent_3 = Address::generate(&env);
 
-    let m1 = issue_mandate_wrapper(&env, &nexus_client, &root, &agent_1, &Scope { expiration: fixed_expiration, transfer_limit: None, renewal_period: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None }, &DelegationPolicy::Full, &None);
-    let m2 = issue_mandate_wrapper(&env, &nexus_client, &root, &agent_2, &Scope { expiration: fixed_expiration, transfer_limit: None, renewal_period: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None }, &DelegationPolicy::Full, &Some(m1));
-    let m3 = issue_mandate_wrapper(&env, &nexus_client, &root, &agent_3, &Scope { expiration: fixed_expiration, transfer_limit: None, renewal_period: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None }, &DelegationPolicy::None, &Some(m2));
+    let m1 = issue_mandate_wrapper(&env, &nexus_client, &root, &agent_1, &Scope { expiration: fixed_expiration, transfer_limit: None, token: None, renewal_period: None, metadata_uri: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None }, &DelegationPolicy::Full, &None);
+    let m2 = issue_mandate_wrapper(&env, &nexus_client, &root, &agent_2, &Scope { expiration: fixed_expiration, transfer_limit: None, token: None, renewal_period: None, metadata_uri: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None }, &DelegationPolicy::Full, &Some(m1));
+    let m3 = issue_mandate_wrapper(&env, &nexus_client, &root, &agent_3, &Scope { expiration: fixed_expiration, transfer_limit: None, token: None, renewal_period: None, metadata_uri: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None }, &DelegationPolicy::None, &Some(m2));
 
-    assert!(nexus_client.verify_authority(&m3, &agent_3, &Address::generate(&env), &Symbol::new(&env, "any"), &None));
+    assert!(nexus_client.verify_authority(&m3, &agent_3, &Address::generate(&env), &Symbol::new(&env, "any"), &None, &None));
 
     // Revoke m1
     nexus_client.revoke_mandate(&root, &m1);
 
     // m3 should be invalid
-    assert!(!nexus_client.verify_authority(&m3, &agent_3, &Address::generate(&env), &Symbol::new(&env, "any"), &None));
-    }
+    assert!(!nexus_client.verify_authority(&m3, &agent_3, &Address::generate(&env), &Symbol::new(&env, "any"), &None, &None));
+}
 
-    #[test]
-    fn test_child_scope_violations() {
+#[test]
+fn test_child_scope_violations() {
     let env = Env::default();
     env.mock_all_auths();
-    let fixed_expiration = env.ledger().timestamp() + 3600;
 
     let admin = Address::generate(&env);
     let signer = Address::generate(&env);
@@ -823,83 +811,84 @@ fn test_remote_mandate_issuance() {
     let mandate_b_id = issue_mandate_wrapper(&env, &nexus_client, 
         &user,
         &agent_b,
-        &Scope { expiration: 1000, transfer_limit: Some(1000), renewal_period: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
+        &Scope { expiration: 1000, transfer_limit: Some(1000), token: None, renewal_period: None, metadata_uri: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
         &DelegationPolicy::Full,
         &None,
     );
 
     // Violation 1: Child TTL > Parent TTL
     assert!(is_issue_mandate_error(&env, &nexus_client, 
-        &user, // Corrected from agent_b
+        &user, 
         &agent_c,
-        &Scope { expiration: 1001, transfer_limit: Some(500), renewal_period: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
+        &Scope { expiration: 1001, transfer_limit: Some(500), token: None, renewal_period: None, metadata_uri: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
         &DelegationPolicy::None,
         &Some(mandate_b_id),
     ));
 
     // Violation 2: Child transfer_limit > Parent transfer_limit
     assert!(is_issue_mandate_error(&env, &nexus_client, 
-        &user, // Corrected from agent_b
+        &user, 
         &agent_c,
-        &Scope { expiration: 1000, transfer_limit: Some(1001), renewal_period: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
+        &Scope { expiration: 1000, transfer_limit: Some(1001), token: None, renewal_period: None, metadata_uri: None, scope_commitment: None, contract_allowlist: None, function_allowlist: None },
         &DelegationPolicy::None,
         &Some(mandate_b_id),
     ));
-    }
+}
 
-    #[test]
-    fn test_recurring_budget_reset() {
-        let env = Env::default();
-        env.mock_all_auths();
-    let fixed_expiration = env.ledger().timestamp() + 3600;
+#[test]
+fn test_recurring_budget_reset() {
+    let env = Env::default();
+    env.mock_all_auths();
 
-        let admin = Address::generate(&env);
-        let signer = Address::generate(&env);
-        let nexus_id = env.register(Nexus, ());
-        let nexus_client = NexusClient::new(&env, &nexus_id);
-        nexus_client.initialize(&admin, &signer);
-    
+    let admin = Address::generate(&env);
+    let signer = Address::generate(&env);
+    let nexus_id = env.register(Nexus, ());
+    let nexus_client = NexusClient::new(&env, &nexus_id);
+    nexus_client.initialize(&admin, &signer);
+
     let will_id = env.register(MockWill, ());
     nexus_client.set_soul_contract(&admin, &will_id);
 
-        let user = Address::generate(&env);
-        let agent = Address::generate(&env);
-        let contract = Address::generate(&env);
+    let user = Address::generate(&env);
+    let agent = Address::generate(&env);
+    let contract = Address::generate(&env);
 
-        // Period: 1 hour (3600s)
-        let mandate_id = issue_mandate_wrapper(&env, &nexus_client, 
-            &user,
-            &agent,
-            &Scope { 
-                expiration: env.ledger().timestamp() + 86400, 
-                transfer_limit: Some(100), 
-                renewal_period: Some(3600), 
-                scope_commitment: None, 
-                contract_allowlist: None, 
-                function_allowlist: None 
-            },
-            &DelegationPolicy::None,
-            &None,
-        );
+    // Period: 1 hour (3600s)
+    let mandate_id = issue_mandate_wrapper(&env, &nexus_client, 
+        &user,
+        &agent,
+        &Scope { 
+            expiration: env.ledger().timestamp() + 86400, 
+            transfer_limit: Some(100), 
+            token: None,
+            renewal_period: Some(3600), 
+            metadata_uri: None,
+            scope_commitment: None, 
+            contract_allowlist: None, 
+            function_allowlist: None 
+        },
+        &DelegationPolicy::None,
+        &None,
+    );
 
-        // 1. Spend 100 (Full budget)
-        assert!(nexus_client.verify_authority(&mandate_id, &agent, &contract, &Symbol::new(&env, "any"), &Some(100)));
-        
-        // 2. Spend 1 (Fails)
-        assert!(!nexus_client.verify_authority(&mandate_id, &agent, &contract, &Symbol::new(&env, "any"), &Some(1)));
+    // 1. Spend 100 (Full budget)
+    assert!(nexus_client.verify_authority(&mandate_id, &agent, &contract, &Symbol::new(&env, "any"), &Some(100), &None));
+    
+    // 2. Spend 1 (Fails)
+    assert!(!nexus_client.verify_authority(&mandate_id, &agent, &contract, &Symbol::new(&env, "any"), &Some(1), &None));
 
-        // 3. Move time forward by 1 hour
-        env.ledger().with_mut(|li| li.timestamp += 3601);
+    // 3. Move time forward by 1 hour
+    env.ledger().with_mut(|li| li.timestamp += 3601);
 
-        // 4. Spend 1 (Succeeds - Budget reset)
-        assert!(nexus_client.verify_authority(&mandate_id, &agent, &contract, &Symbol::new(&env, "any"), &Some(1)));
-        
-        // 5. Spend another 100 (Fails - new period budget exceeded)
-        assert!(!nexus_client.verify_authority(&mandate_id, &agent, &contract, &Symbol::new(&env, "any"), &Some(100)));
+    // 4. Spend 1 (Succeeds - Budget reset)
+    assert!(nexus_client.verify_authority(&mandate_id, &agent, &contract, &Symbol::new(&env, "any"), &Some(1), &None));
+    
+    // 5. Spend another 100 (Fails - new period budget exceeded)
+    assert!(!nexus_client.verify_authority(&mandate_id, &agent, &contract, &Symbol::new(&env, "any"), &Some(100), &None));
 
-        // 6. Move time forward by another hour
-        env.ledger().with_mut(|li| li.timestamp += 3601);
+    // 6. Move time forward by another hour
+    env.ledger().with_mut(|li| li.timestamp += 3601);
 
-        // 7. Spend 100 (Succeeds - Second reset)
-        assert!(nexus_client.verify_authority(&mandate_id, &agent, &contract, &Symbol::new(&env, "any"), &Some(100)));
-    }
+    // 7. Spend 100 (Succeeds - Second reset)
+    assert!(nexus_client.verify_authority(&mandate_id, &agent, &contract, &Symbol::new(&env, "any"), &Some(100), &None));
+}
