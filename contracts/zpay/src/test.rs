@@ -17,7 +17,7 @@ fn init_client(env: &Env) -> (ZPayContractClient, Address, Address, Address, Add
 
 #[contract] pub struct MockNexus;
 #[contractimpl] impl MockNexus {
-    pub fn verify_authority(_e: Env, m: u64, a: Address, _c: Address, _f: Symbol, _t: Option<i128>) -> bool {
+    pub fn verify_authority(_e: Env, m: u64, a: Address, _c: Address, _f: Symbol, _t: Option<i128>, _tok: Option<Address>) -> bool {
         if m == 123 {
             let a1: Address = _e.storage().persistent().get(&Symbol::new(&_e, "agent1")).unwrap_or(Address::generate(&_e));
             if a != a1 { return false; }
@@ -233,3 +233,29 @@ fn test_staleness_rejection() {
     let res = client.try_pay(&user, &user, &admin, &token_id, &100, &1, &Some(ticket), &None, &None, &None);
     assert_eq!(res, Err(Ok(Error::OracleStale)));
 }
+
+#[test]
+fn test_agent_direct_transfer_without_approve() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin, _nexus_id, _, _) = init_client(&env);
+    let token_id = env.register_stellar_asset_contract_v2(admin.clone()).address();
+    client.add_token(&admin, &token_id);
+
+    let fallback_id = env.register(MockFallbackOracle, ());
+    client.set_fallback_oracle(&admin, &token_id, &fallback_id);
+
+    let root_anchor = Address::generate(&env); // Usuário (sem saldo, sem approve)
+    let agent = Address::generate(&env);       // Agente (com saldo, sem approve)
+    let seller = Address::generate(&env);      // Vendedor
+
+    // 1. Mint na carteira do Agente (nenhum approve é feito para o ZPay!)
+    soroban_sdk::token::StellarAssetClient::new(&env, &token_id).mint(&agent, &2_000_000_000);
+
+    // 2. Executa o pagamento via Agente referenciando o mandato do root_anchor
+    client.pay(&agent, &root_anchor, &seller, &token_id, &100_000_000, &999, &None, &None, &None, &None);
+
+    // 3. Valida que o vendedor recebeu o saldo diretamente da carteira do Agente
+    assert_eq!(TokenClient::new(&env, &token_id).balance(&seller), 100_000_000);
+}
+

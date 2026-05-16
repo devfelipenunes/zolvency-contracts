@@ -16,7 +16,7 @@ fi
 
 STELLAR_CLI="stellar"
 NETWORK="testnet"
-SOURCE="$ADMIN_SECRET"
+SOURCE="${ADMIN_SECRET:-$SOROBAN_RELAYER_SECRET}"
 WASM_DIR="target/wasm32v1-none/release"
 
 echo "===================================================="
@@ -65,7 +65,7 @@ $STELLAR_CLI contract invoke --id "$GITHUB_ID" --source "$SOURCE" --network "$NE
     --admin "$ADMIN_PUBLIC" \
     --registry "$NEXUS_ID" \
     --soul_contract "$SOUL_ID" \
-    --fee_token "$AXELAR_GAS_TOKEN_STELLAR" \
+    --fee_token "${AXELAR_GAS_TOKEN_STELLAR:-$GITHUB_ID}" \
     --access_control "$ADMIN_PUBLIC" \
     --treasury "$TREASURY_ADDRESS" \
     --mint_fee 0
@@ -73,17 +73,17 @@ $STELLAR_CLI contract invoke --id "$GITHUB_ID" --source "$SOURCE" --network "$NE
 echo "   -> Gig..."
 # Gig uses InitializeParams struct - using strings for i128/u64 to satisfy CLI
 $STELLAR_CLI contract invoke --id "$GIG_ID" --source "$SOURCE" --network "$NETWORK" -- initialize \
-    --params "{ \"admin\": \"$ADMIN_PUBLIC\", \"registry\": \"$NEXUS_ID\", \"soul_contract\": \"$SOUL_ID\", \"fee_token\": \"$AXELAR_GAS_TOKEN_STELLAR\", \"access_control\": \"$ADMIN_PUBLIC\", \"treasury\": \"$TREASURY_ADDRESS\", \"mint_fee_30\": \"0\", \"mint_fee_60\": \"0\", \"mint_fee_90\": \"0\", \"max_proof_age_seconds\": 86400 }"
+    --params "{ \"admin\": \"$ADMIN_PUBLIC\", \"registry\": \"$NEXUS_ID\", \"soul_contract\": \"$SOUL_ID\", \"fee_token\": \"${AXELAR_GAS_TOKEN_STELLAR:-$GITHUB_ID}\", \"access_control\": \"$ADMIN_PUBLIC\", \"treasury\": \"$TREASURY_ADDRESS\", \"mint_fee_30\": \"0\", \"mint_fee_60\": \"0\", \"mint_fee_90\": \"0\", \"max_proof_age_seconds\": 86400 }"
 # Wait, let's try max_proof_age_seconds as number first, if fails I'll stringify it too.
 # Actually, the error said "number, expected string or map". 
 # But it pointed to the WHOLE string earlier.
 
 echo "   -> Flow..."
-$STELLAR_CLI contract invoke --id "$FLOW_ID" --source "$SOURCE" --network "$NETWORK" -- initialize --admin "$ADMIN_PUBLIC" --registry "$NEXUS_ID" --fee_token "$AXELAR_GAS_TOKEN_STELLAR" --access_control "$ADMIN_PUBLIC" --treasury "$TREASURY_ADDRESS" --mint_fee_30 0 --mint_fee_60 0 --mint_fee_90 0 --max_proof_age_seconds 86400 --is_production false
+$STELLAR_CLI contract invoke --id "$FLOW_ID" --source "$SOURCE" --network "$NETWORK" -- initialize --admin "$ADMIN_PUBLIC" --registry "$NEXUS_ID" --fee_token "${AXELAR_GAS_TOKEN_STELLAR:-$GITHUB_ID}" --access_control "$ADMIN_PUBLIC" --treasury "$TREASURY_ADDRESS" --mint_fee_30 0 --mint_fee_60 0 --mint_fee_90 0 --max_proof_age_seconds 86400 --is_production false
 $STELLAR_CLI contract invoke --id "$FLOW_ID" --source "$SOURCE" --network "$NETWORK" -- set_soul_contract --admin "$ADMIN_PUBLIC" --soul_contract "$SOUL_ID"
 
 echo "   -> Axelar Adapter..."
-$STELLAR_CLI contract invoke --id "$ADAPTER_ID" --source "$SOURCE" --network "$NETWORK" -- initialize --admin "$ADMIN_PUBLIC" --soul_contract "$SOUL_ID" --gateway "$AXELAR_GATEWAY_STELLAR" --gas_service "$AXELAR_GAS_SERVICE_STELLAR" --gas_token "$AXELAR_GAS_TOKEN_STELLAR"
+$STELLAR_CLI contract invoke --id "$ADAPTER_ID" --source "$SOURCE" --network "$NETWORK" -- initialize --admin "$ADMIN_PUBLIC" --soul_contract "$SOUL_ID" --gateway "${AXELAR_GATEWAY_STELLAR:-$GITHUB_ID}" --gas_service "${AXELAR_GAS_SERVICE_STELLAR:-$GITHUB_ID}" --gas_token "${AXELAR_GAS_TOKEN_STELLAR:-$GITHUB_ID}"
 
 echo "   -> ZPay..."
 $STELLAR_CLI contract invoke --id "$ZPAY_ID" --source "$SOURCE" --network "$NETWORK" -- initialize \

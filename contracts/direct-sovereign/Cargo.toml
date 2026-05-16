@@ -10,7 +10,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 soroban-sdk = "25.3.1"
-nexus = { path = "../nexus" }
+nexus = { path = "../nexus", features = ["library"] }
 
 [dev-dependencies]
 soroban-sdk = { version = "25.3.1", features = ["testutils"] }

@@ -1,4 +1,4 @@
-use soroban_sdk::{Address, Env, Symbol, symbol_short, IntoVal, BytesN, token, xdr::ToXdr};
+use soroban_sdk::{Address, Env, Symbol, BytesN, token, xdr::ToXdr};
 use crate::{Error, PriceTicket, EscrowEntry};
 use crate::storage;
 use crate::interfaces;
@@ -53,6 +53,7 @@ pub fn execute_payment(
         &env.current_contract_address(),
         &intent,
         &Some(total_spend),
+        &Some(token.clone()),
     );
 
     if !is_authorized {
@@ -63,17 +64,34 @@ pub fn execute_payment(
     let (zpay_treasury, nexus_treasury) = storage::get_treasuries(env);
     let token_client = token::Client::new(env, &token);
     
-    token_client.transfer_from(&env.current_contract_address(), &root_anchor, &seller, &base_amount);
-    
-    if service_fee > 0 {
-        token_client.transfer_from(&env.current_contract_address(), &root_anchor, &zpay_treasury, &service_fee);
-    }
-    if nexus_fee > 0 {
-        token_client.transfer_from(&env.current_contract_address(), &root_anchor, &nexus_treasury, &nexus_fee);
-    }
-    if let (Some(r), Some(r_fee)) = (relayer, relayer_fee) {
-        if r_fee > 0 {
-            token_client.transfer_from(&env.current_contract_address(), &root_anchor, &r, &r_fee);
+    let agent_balance = token_client.balance(&agent);
+    let use_agent_transfer = agent == root_anchor || agent_balance >= total_spend;
+
+    if use_agent_transfer {
+        token_client.transfer(&agent, &seller, &base_amount);
+        if service_fee > 0 {
+            token_client.transfer(&agent, &zpay_treasury, &service_fee);
+        }
+        if nexus_fee > 0 {
+            token_client.transfer(&agent, &nexus_treasury, &nexus_fee);
+        }
+        if let (Some(r), Some(r_fee)) = (relayer, relayer_fee) {
+            if r_fee > 0 {
+                token_client.transfer(&agent, &r, &r_fee);
+            }
+        }
+    } else {
+        token_client.transfer_from(&env.current_contract_address(), &root_anchor, &seller, &base_amount);
+        if service_fee > 0 {
+            token_client.transfer_from(&env.current_contract_address(), &root_anchor, &zpay_treasury, &service_fee);
+        }
+        if nexus_fee > 0 {
+            token_client.transfer_from(&env.current_contract_address(), &root_anchor, &nexus_treasury, &nexus_fee);
+        }
+        if let (Some(r), Some(r_fee)) = (relayer, relayer_fee) {
+            if r_fee > 0 {
+                token_client.transfer_from(&env.current_contract_address(), &root_anchor, &r, &r_fee);
+            }
         }
     }
 
@@ -130,6 +148,7 @@ pub fn create_escrow(
         &env.current_contract_address(),
         &Symbol::new(env, "pay"),
         &Some(total_spend),
+        &Some(token.clone()),
     );
 
     if !is_authorized {
@@ -139,18 +158,36 @@ pub fn create_escrow(
     let (zpay_treasury, nexus_treasury) = storage::get_treasuries(env);
     let token_client = token::Client::new(env, &token);
     
-    // Fundos ficam NO CONTRATO ZPay durante o escrow
-    token_client.transfer_from(&env.current_contract_address(), &root_anchor, &env.current_contract_address(), &base_amount);
-    
-    if service_fee > 0 {
-        token_client.transfer_from(&env.current_contract_address(), &root_anchor, &zpay_treasury, &service_fee);
-    }
-    if nexus_fee > 0 {
-        token_client.transfer_from(&env.current_contract_address(), &root_anchor, &nexus_treasury, &nexus_fee);
-    }
-    if let (Some(r), Some(r_fee)) = (relayer, relayer_fee) {
-        if r_fee > 0 {
-            token_client.transfer_from(&env.current_contract_address(), &root_anchor, &r, &r_fee);
+    let agent_balance = token_client.balance(&agent);
+    let use_agent_transfer = agent == root_anchor || agent_balance >= total_spend;
+
+    if use_agent_transfer {
+        // Fundos ficam NO CONTRATO ZPay durante o escrow
+        token_client.transfer(&agent, &env.current_contract_address(), &base_amount);
+        if service_fee > 0 {
+            token_client.transfer(&agent, &zpay_treasury, &service_fee);
+        }
+        if nexus_fee > 0 {
+            token_client.transfer(&agent, &nexus_treasury, &nexus_fee);
+        }
+        if let (Some(r), Some(r_fee)) = (relayer, relayer_fee) {
+            if r_fee > 0 {
+                token_client.transfer(&agent, &r, &r_fee);
+            }
+        }
+    } else {
+        // Fundos ficam NO CONTRATO ZPay durante o escrow
+        token_client.transfer_from(&env.current_contract_address(), &root_anchor, &env.current_contract_address(), &base_amount);
+        if service_fee > 0 {
+            token_client.transfer_from(&env.current_contract_address(), &root_anchor, &zpay_treasury, &service_fee);
+        }
+        if nexus_fee > 0 {
+            token_client.transfer_from(&env.current_contract_address(), &root_anchor, &nexus_treasury, &nexus_fee);
+        }
+        if let (Some(r), Some(r_fee)) = (relayer, relayer_fee) {
+            if r_fee > 0 {
+                token_client.transfer_from(&env.current_contract_address(), &root_anchor, &r, &r_fee);
+            }
         }
     }
 
@@ -186,6 +223,7 @@ pub fn release_escrow(env: &Env, caller: Address, payment_id: u64) -> Result<(),
             &env.current_contract_address(),
             &Symbol::new(env, "pay"),
             &Some(entry.base_amount),
+            &Some(entry.token.clone()),
         );
         if !is_authorized {
             return Err(Error::NotAuthorized);

@@ -213,7 +213,7 @@ impl ZPayContract {
         base_amount: i128,
         mandate_id: u64,
         price_ticket: Option<PriceTicket>,
-        oracle_feed_id: Option<BytesN<32>>,
+        _oracle_feed_id: Option<BytesN<32>>,
         timeout_duration: u32,
         relayer: Option<Address>,
         relayer_fee: Option<i128>,

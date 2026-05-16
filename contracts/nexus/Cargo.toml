@@ -17,6 +17,7 @@ zolvency-soul = { path = "../soul", features = ["testutils"] }
 
 [features]
 testutils = ["soroban-sdk/testutils"]
+library = []
 
 [profile.release]
 opt-level = "z"

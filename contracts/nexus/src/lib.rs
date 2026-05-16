@@ -181,7 +181,7 @@ mod test;
 #[contract]
 pub struct Nexus;
 
-#[contractimpl]
+#[cfg_attr(not(feature = "library"), contractimpl)]
 impl Nexus {
     /// Inicializa o Nexus com o administrador e o assinante global.
     pub fn initialize(env: Env, admin: Address, signer: Address) -> Result<(), MandateError> {
