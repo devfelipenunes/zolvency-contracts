@@ -20,7 +20,7 @@ fn setup_test(env: &Env) -> (Address, Address, soroban_sdk::token::StellarAssetC
 }
 
 #[test]
-fn test_inflation_protection() {
+fn test_deposit_and_balance() {
     let env = Env::default();
     env.mock_all_auths();
     let (_, user, token, vault) = setup_test(&env);
@@ -30,22 +30,10 @@ fn test_inflation_protection() {
     
     vault.deposit(&user, &deposit_amount);
     
-    // Total shares should be deposit_amount - MINIMUM_LIQUIDITY
-    assert_eq!(vault.get_total_shares(), 1000);
-    assert_eq!(vault.get_user_shares(&user), 1000);
-}
-
-#[test]
-#[should_panic(expected = "Initial deposit too small")]
-fn test_deposit_too_small() {
-    let env = Env::default();
-    env.mock_all_auths();
-    let (_, user, token, vault) = setup_test(&env);
-    
-    let deposit_amount = 500;
-    token.mint(&user, &deposit_amount);
-    
-    vault.deposit(&user, &deposit_amount);
+    // Total principal should be equal to deposit_amount (1:1)
+    assert_eq!(vault.get_total_principal(), 2000);
+    assert_eq!(vault.get_user_balance(&user), 2000);
+    assert_eq!(vault.get_balance(&user), 2000);
 }
 
 #[test]
@@ -63,11 +51,10 @@ fn test_multiple_deposits() {
     token.mint(&user2, &1000);
     vault.deposit(&user2, &1000);
     
-    // Total balance = 3000
-    // Total shares = 1000
-    // user2 shares = (1000 * 1000) / 2000 = 500
-    assert_eq!(vault.get_user_shares(&user2), 500);
-    assert_eq!(vault.get_total_shares(), 1500);
+    // Total principal = 3000
+    assert_eq!(vault.get_user_balance(&user1), 2000);
+    assert_eq!(vault.get_user_balance(&user2), 1000);
+    assert_eq!(vault.get_total_principal(), 3000);
 }
 
 #[test]
@@ -78,21 +65,18 @@ fn test_consume_credit() {
     
     // Initial deposit
     token.mint(&user, &2000);
-    vault.deposit(&user, &2000); // 1000 shares
+    vault.deposit(&user, &2000);
     
     // Consume credit (admin only)
-    // total_balance = 2000
-    // total_shares = 1000
     // amount = 500 tokens
-    // shares_to_burn = (500 * 1000) / 2000 = 250
     vault.consume_credit(&user, &500);
     
-    assert_eq!(vault.get_user_shares(&user), 750);
-    assert_eq!(vault.get_total_shares(), 750);
+    assert_eq!(vault.get_user_balance(&user), 1500);
+    assert_eq!(vault.get_total_principal(), 1500);
 }
 
 #[test]
-fn test_yield_harvesting() {
+fn test_yield_harvesting_captured_by_protocol() {
     let env = Env::default();
     env.mock_all_auths();
     let (admin, user, token, vault) = setup_test(&env);
@@ -100,7 +84,7 @@ fn test_yield_harvesting() {
     
     // Initial deposit
     token.mint(&user, &2000);
-    vault.deposit(&user, &2000); // 1000 shares, balance = 2000
+    vault.deposit(&user, &2000);
     
     assert_eq!(vault.get_balance(&user), 2000);
     
@@ -110,18 +94,13 @@ fn test_yield_harvesting() {
     // Delegate liquidity
     vault.delegate_liquidity(&admin, &1000);
     
-    // Check balance still same (liquidity moved but still accounted for)
-    assert_eq!(vault.get_balance(&user), 2000);
-    assert_eq!(vault.get_total_balance(), 2000);
-    
     // Harvest yield
     vault.harvest_yield(&adapter, &500);
     
     // Total balance should be 2500 now (2000 + 500)
-    // user has 1000 shares out of 1000 total shares
-    // balance = (1000 * 2500) / 1000 = 2500
+    // BUT user balance remains stable at 2000 (Profit Capture)
     assert_eq!(vault.get_total_balance(), 2500);
-    assert_eq!(vault.get_balance(&user), 2500);
+    assert_eq!(vault.get_balance(&user), 2000);
 }
 
 #[test]
@@ -151,4 +130,52 @@ fn test_harvest_yield_unauthorized() {
     
     // Unauthorized adapter tries to harvest yield (should fail)
     vault.harvest_yield(&unauthorized_adapter, &500);
+}
+
+#[test]
+fn test_profit_capture_and_withdrawal() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (admin, user, token, vault) = setup_test(&env);
+    let adapter = Address::generate(&env);
+    let recipient = Address::generate(&env);
+    
+    // Initial deposit
+    token.mint(&user, &2000);
+    vault.deposit(&user, &2000);
+    
+    // Set adapter and delegate
+    vault.set_defi_adapter(&admin, &adapter);
+    vault.delegate_liquidity(&admin, &1000);
+    
+    // Harvest yield (profit)
+    vault.harvest_yield(&adapter, &500);
+    
+    // Check profit
+    assert_eq!(vault.get_profit(), 500);
+    
+    // Withdraw profit
+    vault.withdraw_profit(&admin, &recipient, &300);
+    
+    // Check remaining profit and total balance
+    assert_eq!(vault.get_profit(), 200);
+    assert_eq!(vault.get_total_balance(), 2200);
+    
+    // Check recipient token balance
+    let token_client = soroban_sdk::token::Client::new(&env, &token.address);
+    assert_eq!(token_client.balance(&recipient), 300);
+}
+
+#[test]
+#[should_panic(expected = "Insufficient profit balance")]
+fn test_withdraw_profit_insufficient() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (admin, user, token, vault) = setup_test(&env);
+    
+    token.mint(&user, &1000);
+    vault.deposit(&user, &1000);
+    
+    // No profit generated yet
+    vault.withdraw_profit(&admin, &admin, &100);
 }

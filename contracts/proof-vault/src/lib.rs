@@ -6,8 +6,8 @@ use soroban_sdk::{contract, contractimpl, contracttype, Address, Env};
 pub enum DataKey {
     Admin,
     Token,
-    TotalShares,
-    UserShares(Address),
+    TotalUserPrincipal,
+    UserBalance(Address),
     TotalRevenue,
     DeFiAdapter,
     DelegatedAmount,
@@ -15,8 +15,6 @@ pub enum DataKey {
 
 #[contract]
 pub struct ProofVaultContract;
-
-const MINIMUM_LIQUIDITY: i128 = 1000;
 
 #[contractimpl]
 impl ProofVaultContract {
@@ -30,12 +28,11 @@ impl ProofVaultContract {
         env.storage().instance().set(&DataKey::Admin, &admin);
         env.storage().instance().set(&DataKey::Token, &token);
         env.storage().instance().set(&DataKey::TotalRevenue, &0i128);
-        env.storage().instance().set(&DataKey::TotalShares, &0i128);
+        env.storage().instance().set(&DataKey::TotalUserPrincipal, &0i128);
         env.storage().instance().set(&DataKey::DelegatedAmount, &0i128);
     }
 
-    /// Deposits tokens into the vault and mints shares to the user.
-    /// Implements protection against inflation attacks using a minimum liquidity threshold.
+    /// Deposits tokens into the vault and updates user principal balance.
     pub fn deposit(env: Env, user: Address, amount: i128) {
         user.require_auth();
         if amount <= 0 {
@@ -45,40 +42,23 @@ impl ProofVaultContract {
         let token: Address = env.storage().instance().get(&DataKey::Token).unwrap();
         let client = soroban_sdk::token::Client::new(&env, &token);
         
-        let total_balance = Self::get_total_balance(env.clone());
-        let total_shares = Self::get_total_shares(env.clone());
-
         client.transfer(&user, &env.current_contract_address(), &amount);
 
-        let shares_to_mint = if total_shares == 0 {
-            // Inflation protection: first depositor loses MINIMUM_LIQUIDITY shares
-            if amount <= MINIMUM_LIQUIDITY {
-                panic!("Initial deposit too small");
-            }
-            amount.checked_sub(MINIMUM_LIQUIDITY).unwrap()
-        } else {
-            // (amount * total_shares) / total_balance
-            amount.checked_mul(total_shares).unwrap()
-                .checked_div(total_balance).unwrap()
-        };
-
-        if shares_to_mint <= 0 {
-            panic!("Deposit result in zero shares");
-        }
-
-        let user_shares_key = DataKey::UserShares(user.clone());
-        let user_shares: i128 = env.storage().persistent().get(&user_shares_key).unwrap_or(0);
+        let user_balance_key = DataKey::UserBalance(user.clone());
+        let user_balance: i128 = env.storage().persistent().get(&user_balance_key).unwrap_or(0);
         
-        env.storage().persistent().set(&user_shares_key, &(user_shares.checked_add(shares_to_mint).unwrap()));
-        env.storage().instance().set(&DataKey::TotalShares, &(total_shares.checked_add(shares_to_mint).unwrap()));
+        let total_principal: i128 = env.storage().instance().get(&DataKey::TotalUserPrincipal).unwrap_or(0);
+        
+        env.storage().persistent().set(&user_balance_key, &(user_balance.checked_add(amount).unwrap()));
+        env.storage().instance().set(&DataKey::TotalUserPrincipal, &(total_principal.checked_add(amount).unwrap()));
     }
 
-    pub fn get_total_shares(env: Env) -> i128 {
-        env.storage().instance().get(&DataKey::TotalShares).unwrap_or(0)
+    pub fn get_total_principal(env: Env) -> i128 {
+        env.storage().instance().get(&DataKey::TotalUserPrincipal).unwrap_or(0)
     }
 
-    pub fn get_user_shares(env: Env, user: Address) -> i128 {
-        env.storage().persistent().get(&DataKey::UserShares(user)).unwrap_or(0)
+    pub fn get_user_balance(env: Env, user: Address) -> i128 {
+        env.storage().persistent().get(&DataKey::UserBalance(user)).unwrap_or(0)
     }
 
     pub fn get_total_balance(env: Env) -> i128 {
@@ -90,48 +70,26 @@ impl ProofVaultContract {
     }
 
     pub fn get_balance(env: Env, user: Address) -> i128 {
-        let total_shares = Self::get_total_shares(env.clone());
-        if total_shares == 0 {
-            return 0;
-        }
-        let user_shares = Self::get_user_shares(env.clone(), user);
-        let total_balance = Self::get_total_balance(env.clone());
-        
-        // (user_shares * total_balance) / total_shares
-        user_shares.checked_mul(total_balance).unwrap()
-            .checked_div(total_shares).unwrap()
+        Self::get_user_balance(env, user)
     }
 
-    /// Admin-only function to burn a user's shares in exchange for off-chain or virtual credit.
-    /// This is a custodial burn requested by the protocol design.
+    /// Admin-only function to consume a user's balance in exchange for off-chain or virtual credit.
+    /// This is a custodial consumption requested by the protocol design.
     pub fn consume_credit(env: Env, user: Address, amount: i128) {
         let admin: Address = env.storage().instance().get(&DataKey::Admin).unwrap();
         admin.require_auth();
 
-        let total_balance = Self::get_total_balance(env.clone());
-        let total_shares = Self::get_total_shares(env.clone());
+        let user_balance_key = DataKey::UserBalance(user.clone());
+        let user_balance: i128 = env.storage().persistent().get(&user_balance_key).unwrap_or(0);
         
-        if total_balance == 0 {
-            panic!("Insufficient balance");
+        if user_balance < amount {
+            panic!("Insufficient user balance");
         }
 
-        // Calculate shares proportional to the amount of tokens "consumed"
-        let shares_to_burn = amount.checked_mul(total_shares).unwrap()
-            .checked_div(total_balance).unwrap();
+        let total_principal: i128 = env.storage().instance().get(&DataKey::TotalUserPrincipal).unwrap_or(0);
         
-        if shares_to_burn <= 0 {
-            panic!("Amount too small to consume credit");
-        }
-
-        let user_shares_key = DataKey::UserShares(user.clone());
-        let user_shares: i128 = env.storage().persistent().get(&user_shares_key).unwrap_or(0);
-        
-        if user_shares < shares_to_burn {
-            panic!("Insufficient user shares");
-        }
-        
-        env.storage().persistent().set(&user_shares_key, &(user_shares.checked_sub(shares_to_burn).unwrap()));
-        env.storage().instance().set(&DataKey::TotalShares, &(total_shares.checked_sub(shares_to_burn).unwrap()));
+        env.storage().persistent().set(&user_balance_key, &(user_balance.checked_sub(amount).unwrap()));
+        env.storage().instance().set(&DataKey::TotalUserPrincipal, &(total_principal.checked_sub(amount).unwrap()));
 
         let total_revenue: i128 = env.storage().instance().get(&DataKey::TotalRevenue).unwrap_or(0);
         env.storage().instance().set(&DataKey::TotalRevenue, &(total_revenue.checked_add(amount).unwrap()));
@@ -197,6 +155,34 @@ impl ProofVaultContract {
 
         let delegated_amount: i128 = env.storage().instance().get(&DataKey::DelegatedAmount).unwrap_or(0);
         env.storage().instance().set(&DataKey::DelegatedAmount, &(delegated_amount.checked_add(amount).unwrap()));
+    }
+
+    /// Returns the total profit (surplus) generated by the vault (Total Assets - Total Principal).
+    pub fn get_profit(env: Env) -> i128 {
+        let total_assets = Self::get_total_balance(env.clone());
+        let total_principal = Self::get_total_principal(env.clone());
+        total_assets.checked_sub(total_principal).unwrap_or(0)
+    }
+
+    /// Admin-only function to withdraw vault profits.
+    /// @param admin The address of the vault administrator.
+    /// @param to The recipient address.
+    /// @param amount The amount of profit to withdraw.
+    pub fn withdraw_profit(env: Env, admin: Address, to: Address, amount: i128) {
+        admin.require_auth();
+        let stored_admin: Address = env.storage().instance().get(&DataKey::Admin).expect("Admin not set");
+        if admin != stored_admin {
+            panic!("Unauthorized: not admin");
+        }
+
+        let profit = Self::get_profit(env.clone());
+        if profit < amount {
+            panic!("Insufficient profit balance");
+        }
+
+        let token: Address = env.storage().instance().get(&DataKey::Token).unwrap();
+        let client = soroban_sdk::token::Client::new(&env, &token);
+        client.transfer(&env.current_contract_address(), &to, &amount);
     }
 }
 
