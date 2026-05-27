@@ -10,6 +10,7 @@ members = [
     "contracts/gig",
     "contracts/flow",
     "contracts/direct-sovereign",
+    "contracts/proof-vault",
 ]
 
 [profile.release]
