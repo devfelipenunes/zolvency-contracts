@@ -131,6 +131,10 @@ impl ZolvencySoulContract {
         storage::get_soul_id_by_address(&env, &address).is_some()
     }
 
+    pub fn update_relayer(env: Env, admin: Address, new_relayer: Address) -> Result<(), Error> {
+        logic::update_relayer(&env, admin, new_relayer)
+    }
+
     pub fn upgrade(env: Env, admin: Address, new_wasm_hash: BytesN<32>) -> Result<(), Error> {
         admin.require_auth();
         if admin != storage::get_admin(&env)? {

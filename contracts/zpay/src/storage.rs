@@ -82,3 +82,12 @@ pub fn remove_escrow(env: &Env, id: u64) {
 pub fn is_token_allowed(env: &Env, token: &Address) -> bool {
     env.storage().persistent().has(&DataKey::AllowedToken(token.clone()))
 }
+
+pub fn get_mandate_vault(env: &Env, mandate_id: u64) -> i128 {
+    env.storage().persistent().get(&DataKey::MandateVault(mandate_id)).unwrap_or(0)
+}
+
+pub fn set_mandate_vault(env: &Env, mandate_id: u64, amount: i128) {
+    env.storage().persistent().set(&DataKey::MandateVault(mandate_id), &amount);
+    extend_persistent(env, &DataKey::MandateVault(mandate_id));
+}

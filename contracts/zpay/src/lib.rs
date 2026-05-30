@@ -65,6 +65,7 @@ pub enum DataKey {
     MaxStaleness,
     MaxRelayerFeeBps,
     FallbackOracle(Address),
+    MandateVault(u64),
 }
 
 // --- MODULES ---
@@ -259,5 +260,19 @@ impl ZPayContract {
         }
         env.deployer().update_current_contract_wasm(new_wasm_hash);
         Ok(())
+    }
+
+    pub fn deposit_to_mandate(env: Env, user: Address, mandate_id: u64, token: Address, amount: i128) -> Result<(), Error> {
+        user.require_auth();
+        logic::deposit_to_mandate(&env, user, mandate_id, token, amount)
+    }
+
+    pub fn withdraw_from_mandate(env: Env, user: Address, mandate_id: u64, token: Address, amount: i128) -> Result<(), Error> {
+        user.require_auth();
+        logic::withdraw_from_mandate(&env, user, mandate_id, token, amount)
+    }
+
+    pub fn get_vault_balance(env: Env, mandate_id: u64) -> i128 {
+        storage::get_mandate_vault(&env, mandate_id)
     }
 }

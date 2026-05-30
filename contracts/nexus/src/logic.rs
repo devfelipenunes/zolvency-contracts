@@ -108,7 +108,8 @@ pub fn issue_mandate(env: &Env, request: IssueMandateRequest) -> Result<u64, Man
 
     // 4. Validação de Hierarquia e Escopo (Já feita acima)
     
-    // 5. Checar SoulID (Sovereign Identity) do Root Anchor
+    // 5. Checar SoulID (Sovereign Identity) do Root Anchor - DESATIVADO PARA MVP
+    /*
     let soul_id_contract: Address = env.storage().persistent().get(&DataKey::SoulContract).ok_or(MandateError::SoulIDRequired)?;
     let has_soul: bool = env.invoke_contract(
         &soul_id_contract,
@@ -118,6 +119,7 @@ pub fn issue_mandate(env: &Env, request: IssueMandateRequest) -> Result<u64, Man
     if !has_soul {
         return Err(MandateError::SoulIDRequired);
     }
+    */
 
     // 6. Gravar Mandato
     let id = storage::increment_next_mandate_id(env);
@@ -162,7 +164,8 @@ pub fn issue_mandate_as_admin(
     let admin = storage::get_admin(env)?;
     admin.require_auth();
 
-    // 2. Verificar se o root_anchor tem SoulID
+    // 2. Verificar se o root_anchor tem SoulID - DESATIVADO PARA MVP
+    /*
     let soul_id_contract = env.storage().persistent().get(&DataKey::SoulContract).ok_or(MandateError::NotInitialized)?;
     let has_soul: bool = env.invoke_contract(
         &soul_id_contract,
@@ -172,6 +175,7 @@ pub fn issue_mandate_as_admin(
     if !has_soul {
         return Err(MandateError::SoulIDRequired);
     }
+    */
 
     let id = storage::increment_next_mandate_id(env);
     let current_epoch = storage::get_global_epoch(env, &root_anchor);

@@ -58,7 +58,7 @@ $STELLAR_CLI contract invoke --id "$NEXUS_ID" --source "$SOURCE" --network "$NET
 $STELLAR_CLI contract invoke --id "$NEXUS_ID" --source "$SOURCE" --network "$NETWORK" -- set_soul_contract --admin "$ADMIN_PUBLIC" --soul_contract "$SOUL_ID"
 
 echo "   -> Soul..."
-$STELLAR_CLI contract invoke --id "$SOUL_ID" --source "$SOURCE" --network "$NETWORK" -- initialize --admin "$ADMIN_PUBLIC" --relayer "$ADMIN_PUBLIC"
+$STELLAR_CLI contract invoke --id "$SOUL_ID" --source "$SOURCE" --network "$NETWORK" -- initialize --admin "$ADMIN_PUBLIC" --relayer "GDZGG5MC5KQY4SPRHBENV4UEFDWGYH6IECEFUNPVWRK7Z7ZIDXRYBS5P"
 
 echo "   -> Github..."
 $STELLAR_CLI contract invoke --id "$GITHUB_ID" --source "$SOURCE" --network "$NETWORK" -- initialize \
