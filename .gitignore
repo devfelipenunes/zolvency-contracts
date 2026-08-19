@@ -2,6 +2,7 @@
 .env
 .env.local
 .env.*.local
+.stellar/
 
 # Rust/Soroban Build Artifacts
 target/
@@ -34,6 +35,8 @@ Thumbs.db
 # Project Specific
 *.log
 test_snapshots/
+decoded_args.json
+success_xdr.txt
 stellar-cli
 stellar-cli.tar.gz
 .worktrees/
