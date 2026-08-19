@@ -12,13 +12,13 @@ Este guia define os padrões arquiteturais, de segurança e de codificação par
 O protocolo Zolvency é organizado em uma topologia Hub & Spoke para garantir escalabilidade, segurança centralizada e uma interface unificada para protocolos DeFi.
 
 - **Hub (Zolvency Registry):**
-    - Atua como o "Registry" oficial de todos os SBTs (Soulbound Tokens).
-    - Armazena a chave pública autorizada (`authorized_signer`) para validação global.
-    - Fornece a API `get_user_reputation` que agrega dados de todos os Spokes.
+  - Atua como o "Registry" oficial de todos os SBTs (Soulbound Tokens).
+  - Armazena a chave pública autorizada (`authorized_signer`) para validação global.
+  - Fornece a API `get_user_reputation` que agrega dados de todos os Spokes.
 - **Spoke (SBT Contracts):**
-    - Implementam a `ZolvencyTokenTrait`.
-    - Cada contrato representa uma fonte de reputação específica (GitHub, Bancos, Histórico On-chain).
-    - Validam provas (ZK proofs ou assinaturas) antes de emitir tokens.
+  - Implementam a `ZolvencyTokenTrait`.
+  - Cada contrato representa uma fonte de reputação específica (GitHub, Bancos, Histórico On-chain).
+  - Validam provas (ZK proofs ou assinaturas) antes de emitir tokens.
 
 ## 2. Padrão de Interoperabilidade Modular
 
@@ -27,9 +27,9 @@ A Zolvency utiliza o **Adapter Pattern** para exportar reputação para outras r
 - **Desacoplamento:** O contrato `GithubIdentity` não conhece os detalhes do Axelar ou LayerZero. Ele apenas chama um `Adapter`.
 - **Adaptadores:** Contratos independentes que implementam o envio de mensagens cross-chain.
 - **Protocolos Suportados:**
-    - **Axelar GMP:** Para automação "Push" completa via Gateways.
-    - **Authority-Pull:** Para emissão de eventos e assinaturas off-chain (baixo custo no Stellar).
-    - **LayerZero V2:** Para mensageria ultra-rápida entre OApps.
+  - **Axelar GMP:** Para automação "Push" completa via Gateways.
+  - **Authority-Pull:** Para emissão de eventos e assinaturas off-chain (baixo custo no Stellar).
+  - **LayerZero V2:** Para mensageria ultra-rápida entre OApps.
 
 ## 3. Requisitos de Segurança (Passkeys Opcionais)
 
@@ -37,17 +37,17 @@ O protocolo oferece suporte a segurança baseada em hardware via WebAuthn/Passke
 
 - **Opt-in Security:** O uso de Passkey é estritamente **opcional**.
 - **Lógica de Validação:**
-    - Se `passkey` E `passkey_signature` forem fornecidos (`Some`), a validação criptográfica é obrigatória.
-    - Se ambos forem `None`, a validação é ignorada, facilitando o onboarding.
-    - **Falha de Integridade:** Se apenas um dos campos for fornecido, a transação deve falhar com `InvalidSignature`.
+  - Se `passkey` E `passkey_signature` forem fornecidos (`Some`), a validação criptográfica é obrigatória.
+  - Se ambos forem `None`, a validação é ignorada, facilitando o onboarding.
+  - **Falha de Integridade:** Se apenas um dos campos for fornecido, a transação deve falhar com `InvalidSignature`.
 
 ## 4. Convenções de Código (Rust Workspace)
 
 O repositório é gerenciado como um Rust Workspace para manter a modularidade.
 
 - **Estrutura de Pastas:**
-    - `contracts/`: Contratos Soroban.
-    - `verifiers/evm/`: Contratos Solidity (Foundry).
+  - `contracts/`: Contratos Soroban core (`soul`, `nexus`, `zpay`).
+  - Verifiers EVM e adaptadores de interop vivem em `devfelipenunes/zolvency-interop`.
 - **Tipagem:** Utilize `Option<T>` em vez de placeholders de bytes vazios para campos opcionais.
 - **Build:** Utilize o `Makefile` na raiz para garantir compilações determinísticas: `make build`.
 
@@ -56,6 +56,7 @@ O repositório é gerenciado como um Rust Workspace para manter a modularidade.
 Todos os contratos Spoke devem expor metadados padronizados para facilitar a integração com indexadores e UIs.
 
 ### Estrutura
+
 ```rust
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -68,11 +69,13 @@ pub struct TokenMetadata {
 ```
 
 ### Implementação Obrigatória
+
 Cada contrato deve implementar a função `get_metadata(env: Env) -> TokenMetadata` na `ZolvencyTokenTrait`.
 
 ---
 
 **Nota para Agentes:** Ao iniciar uma tarefa de codificação:
+
 1. Verifique se o contrato segue o **Padrão Técnico ZTS-01** descrito em `ZTS_01_STANDARD.md`.
 2. Para novos contratos RWA, implemente o padrão de **Estado Dinâmico** descrito em `RWA_LIFECYCLE.md`.
 3. Siga o fluxo visual de verificação descrito em `ZK_EMAIL_FLOW.md` ao trabalhar com Spokes de fluxo de caixa Web2.

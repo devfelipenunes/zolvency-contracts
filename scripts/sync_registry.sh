@@ -1,11 +1,13 @@
 #!/bin/bash
-# ZOLVENCY CONTRACT SYNC UTILITY
-# ------------------------------
-# This script ensures all .env files across the repository are in sync.
+# ZOLVENCY CORE CONTRACT SYNC UTILITY
+# ------------------------------------
+# This script ensures .env files are in sync for the core contracts
+# (soul, nexus, zpay) kept in this repository.
+# Contracts de interop vivem em devfelipenunes/zolvency-interop.
 
 # Get the root directory
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-REGISTRY_FILE="$ROOT_DIR/contracts/registry.json"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REGISTRY_FILE="$ROOT_DIR/registry.json"
 
 echo "🔄 Synchronizing contract addresses..."
 
@@ -14,7 +16,7 @@ update_env_file() {
     local key=$1
     local value=$2
     local file=$3
-    
+
     if [ ! -f "$file" ]; then
         return
     fi
@@ -56,37 +58,20 @@ sync_contract() {
     done
 }
 
-# Load current values from registry if it exists, otherwise use what's passed
-# For now, we assume values are passed as arguments or environment variables
-
 # Expected environment variables:
-# NEXUS_ID, SOUL_ID, ZPAY_ID, GITHUB_ID, GIG_ID, FLOW_ID, ADAPTER_ID, DS_ID
+# NEXUS_ID, SOUL_ID, ZPAY_ID
 
 sync_contract "NEXUS_CONTRACT_ID" "$NEXUS_ID" "NEXUS_ID" "ZPAY_CONTRACT_ID_NEXUS" "ZOLVENCY_HUB_ADDRESS" "NEXT_PUBLIC_NEXUS_CONTRACT_ID"
 sync_contract "SOUL_CONTRACT_ID" "$SOUL_ID" "SOUL_ID" "ZPAY_CONTRACT_ID_IDENTITY" "NEXT_PUBLIC_SOUL_CONTRACT_ID"
 sync_contract "ZPAY_CONTRACT_ID" "$ZPAY_ID" "ZPAY_ID" "ZPAY_CONTRACT_ID_GATEWAY" "NEXT_PUBLIC_ZPAY_CONTRACT_ID"
-sync_contract "GITHUB_CONTRACT_ID" "$GITHUB_ID" "GITHUB_ID"
-sync_contract "GIG_CONTRACT_ID" "$GIG_ID" "GIG_ID"
-sync_contract "FLOW_CONTRACT_ID" "$FLOW_ID" "FLOW_ID"
-sync_contract "AXELAR_ADAPTER_ID" "$ADAPTER_ID" "AXELAR_ADAPTER_ID"
-sync_contract "DIRECT_SOVEREIGN_ID" "$DS_ID" "DIRECT_SOVEREIGN_ID" "NEXT_PUBLIC_DIRECT_SOVEREIGN_ID"
 sync_contract "NEXT_PUBLIC_WALLET_WASM_HASH" "$WASM_HASH" "NEXT_PUBLIC_WALLET_WASM_HASH"
-sync_contract "NEXT_PUBLIC_GITHUB_IDENTITY_CONTRACT" "$GITHUB_ID" "NEXT_PUBLIC_GITHUB_IDENTITY_CONTRACT"
-sync_contract "SOROBAN_RELAYER_SECRET" "$RELAYER_SECRET" "SOROBAN_RELAYER_SECRET"
 
 # Update Registry JSON
 echo "{" > "$REGISTRY_FILE"
 echo "  \"NEXUS_CONTRACT_ID\": \"$NEXUS_ID\"," >> "$REGISTRY_FILE"
 echo "  \"SOUL_CONTRACT_ID\": \"$SOUL_ID\"," >> "$REGISTRY_FILE"
 echo "  \"ZPAY_CONTRACT_ID\": \"$ZPAY_ID\"," >> "$REGISTRY_FILE"
-echo "  \"GITHUB_CONTRACT_ID\": \"$GITHUB_ID\"," >> "$REGISTRY_FILE"
-echo "  \"GIG_CONTRACT_ID\": \"$GIG_ID\"," >> "$REGISTRY_FILE"
-echo "  \"FLOW_CONTRACT_ID\": \"$FLOW_ID\"," >> "$REGISTRY_FILE"
-echo "  \"AXELAR_ADAPTER_ID\": \"$ADAPTER_ID\"," >> "$REGISTRY_FILE"
-echo "  \"DIRECT_SOVEREIGN_ID\": \"$DS_ID\"," >> "$REGISTRY_FILE"
-echo "  \"NEXT_PUBLIC_WALLET_WASM_HASH\": \"$WASM_HASH\"," >> "$REGISTRY_FILE"
-echo "  \"NEXT_PUBLIC_GITHUB_IDENTITY_CONTRACT\": \"$GITHUB_ID\"," >> "$REGISTRY_FILE"
-echo "  \"SOROBAN_RELAYER_SECRET\": \"$RELAYER_SECRET\"" >> "$REGISTRY_FILE"
+echo "  \"NEXT_PUBLIC_WALLET_WASM_HASH\": \"$WASM_HASH\"" >> "$REGISTRY_FILE"
 echo "}" >> "$REGISTRY_FILE"
 
 echo "✅ Synchronization complete. Registry updated at $REGISTRY_FILE"

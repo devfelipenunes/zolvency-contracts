@@ -5,12 +5,6 @@ members = [
     "contracts/nexus",
     "contracts/soul",
     "contracts/zpay",
-    "contracts/adapters/axelar",
-    "contracts/github",
-    "contracts/gig",
-    "contracts/flow",
-    "contracts/direct-sovereign",
-    "contracts/proof-vault",
 ]
 
 [profile.release]

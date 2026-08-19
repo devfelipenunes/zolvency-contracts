@@ -1,4 +1,4 @@
-.PHONY: build test fmt lint clean deploy e2e test-security
+.PHONY: build test fmt lint clean deploy e2e test-security audit
 
 # Configurações
 WASM_DIR=target/wasm32v1-none/release
@@ -16,7 +16,7 @@ e2e:
 	./scripts/e2e.sh
 
 deploy: build
-	@echo "🚀 Deploying complete system to Testnet..."
+	@echo "🚀 Deploying core system to Testnet..."
 	./scripts/deploy.sh
 
 test-security:
@@ -37,12 +37,6 @@ clean:
 	@echo "🧹 Cleaning build artifacts..."
 	cargo clean
 
-audit: audit-rust audit-evm
-
-audit-evm:
-	@echo "🔍 Running Slither security audit..."
-	slither verifiers/evm/ --config-file slither.config.json || echo "Slither not found or failed"
-
-audit-rust:
+audit:
 	@echo "🔍 Checking Rust dependencies for vulnerabilities..."
 	cargo audit || echo "Cargo audit not found or failed"
