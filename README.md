@@ -20,24 +20,19 @@ contracts/
 - **[Arquitetura Técnica](./docs/architecture/ARCHITECTURE.md)**: Visão geral do modelo Hub & Spoke.
 - **[Padrão Técnico ZTS-01](./docs/architecture/ZTS_01_STANDARD.md)**: O padrão de interface para novos Spokes de reputação.
 - **[Ciclo de Vida RWA](./docs/architecture/RWA_LIFECYCLE.md)**: Como gerenciar ativos físicos dinâmicos on-chain.
-- **[Fluxo ZK-Email](./docs/architecture/ZK_EMAIL_FLOW.md)**: Detalhamento visual da verificação de fluxo de caixa Web2.
 - **[Guia de Integração para Lending](./docs/specs/2026-04-27-lending-integration-spec.md)**: Como protocolos de crédito usam o Zolvency.
 
 ### 🚀 [Produto](./docs/product/)
 
-- **[Manifesto Sovereign Trust](./docs/product/MANIFESTO.md)**: A visão estratégica de ir além da solvência e dominar o mercado RWA.
 - **[PRD - Product Requirements Document](./docs/product/PRD.md)**: Visão v6.1 do Trust Hub e integração RWA.
-- **[Horizontes Futuros](./docs/product/FUTURE_HORIZONS.md)**: 10 direções estratégicas de alta rentabilidade (Web2-to-Web3).
-- **[Modelo Econômico](./docs/product/ECONOMY.md)**: Tokenomics de spread e taxas B2B.
-- **[Personas e Jornadas](./docs/product/PERSONAS.md)**: Mapa de usuários, RWA Issuers e IAs.
 - **[Matriz de Riscos](./docs/product/RISK_MATRIX.md)**: Segurança e planos de mitigação.
-- **[Estratégia de Mercado (GTM)](./docs/product/GTM_STRATEGY.md)**: Roadmap de adoção e crescimento.
 
 ### 📚 [Guias e Specs](./docs/)
 
 - **[Comandos Úteis (Cheatsheet)](./docs/guides/CHEATSHEET.md)**: Guia rápido de Soroban CLI e deploy.
 - **[Especificações de Design](./docs/specs/)**: Detalhes técnicos de cada funcionalidade implementada.
-- **[Planos de Implementação](./docs/plans/)**: Histórico de execução das tasks.
+
+> 📄 Documentos de visão de produto (Manifesto, Economia, Personas, GTM, Horizontes), planos históricos de execução e o fluxo ZK-Email dos spokes Web2 foram movidos para [`devfelipenunes/zolvency-interop`](https://github.com/devfelipenunes/zolvency-interop).
 
 ## 🤖 Para Agentes de IA
 
