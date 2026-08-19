@@ -63,27 +63,29 @@ make lint && make fmt
 O protocolo assume uma identidade raiz (`zolvency-soul`) como pré-requisito para emissão de credenciais (Spokes). Na prática:
 
 - O usuário primeiro “loga” e recebe uma Soul (mint via `relayer` autorizado).
-- Spokes que emitem credenciais (ex: `github-identity`, `uber-income`, `income-bank`, `binance-kyc`) validam Soul no `mint` consultando o contrato Soul (ex: `balance(user) > 0`).
+- Spokes que emitem credenciais (ex: `github-identity`, `uber-income`, `income-bank`, `binance-kyc` — vivem em [`devfelipenunes/zolvency-interop`](https://github.com/devfelipenunes/zolvency-interop)) validam Soul no `mint` consultando o contrato Soul (ex: `balance(user) > 0`).
 - O `nexus` agrega reputação consultando entrypoints padronizados dos spokes.
 
 ## 🧪 E2E (Soul-Centric Flow)
 
-O script [scripts/test_e2e_flow.sh](scripts/test_e2e_flow.sh) executa um fluxo de ponta a ponta em testnet:
+O script [scripts/e2e.sh](scripts/e2e.sh) executa um fluxo de ponta a ponta em testnet:
 
 1. Mint da Soul
-2. Checagem de `balance`
-3. Mint de um spoke (GitHub)
-4. Mint de um spoke (Uber Income)
+2. Criação de um Mandate no Nexus
+3. Pagamento via ZPay
+4. Escrow via ZPay
+5. Revogação do mandate
 
 Pré-requisitos:
 
-- Um arquivo `.env` com `DEPLOYER_SECRET` e `ADMIN_PUBLIC`
-- IDs de contrato (`SOUL_ID`, `GITHUB_ID`, `UBER_ID`) configurados no próprio script
+- Um arquivo `.env` com `ADMIN_SECRET`
+- IDs de contrato (`NEXUS_ID`, `SOUL_ID`, `ZPAY_ID`) configurados no próprio `.env`
+- As identidades de teste (`user_e2e`, `agent_e2e`, `vendor_e2e`) são geradas automaticamente pelo script via `stellar keys generate`
 
 Execução:
 
 ```bash
-bash scripts/test_e2e_flow.sh
+bash scripts/e2e.sh
 ```
 
 ## 🛠️ Como começar
